@@ -1,0 +1,1904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DL Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --graphite:#10213A;        /* deep navy, used for text and the top bar */
+  --blue:#1B4F9C;            /* the working blue: buttons, bars, selection */
+  --blue-dark:#153F7D;
+  --slate:#44566E;           /* secondary text, dark enough to read outdoors */
+  --field:#EDF1F7; --panel:#FFFFFF;
+  --rule:#C2CFDF; --rule-soft:#E3EAF3;
+  --signal:#F2B705;          /* the yellow: attention, waiting, brand mark */
+  --signal-soft:#FFF4D6;
+  --pass:#12694E; --flag:#B3261E; --deep:#1B4F9C; --invert:#F7FAFC;
+  --display:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--field);color:var(--graphite);font-family:var(--body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.01em}
+.eyebrow{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sub{font-size:12px;color:var(--slate);margin-top:2px}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--graphite);outline-offset:2px}
+p{margin:0 0 10px}
+
+/* ---------- chrome ---------- */
+.topbar{background:var(--graphite);color:var(--invert);display:flex;align-items:center;gap:14px;padding:0 18px;height:52px;position:sticky;top:0;z-index:30}
+.brand{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--signal)}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar select,.topbar input[type=date]{
+  font:inherit;font-size:12px;background:#2B333A;color:var(--invert);
+  border:1px solid #3A444C;border-radius:2px;padding:5px 7px;font-family:var(--mono);
+}
+.topbar label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8FA0AC;font-family:var(--display);font-weight:700}
+
+.navbar{background:var(--graphite);border-bottom:3px solid var(--signal);position:sticky;top:52px;z-index:29;padding:0 12px;overflow-x:auto}
+#nav{display:flex;gap:2px;min-width:max-content}
+.tab{
+  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em;
+  background:transparent;border:0;color:#A9C0DC;padding:11px 14px;border-bottom:3px solid transparent;white-space:nowrap;
+}
+.tab:hover{color:var(--invert)}
+.tab.on{color:var(--invert);border-bottom-color:var(--signal)}
+.tab[disabled]{opacity:.35;cursor:not-allowed}
+
+main{max-width:1400px;margin:0 auto;padding:22px 18px 90px}
+
+/* ---------- generic ---------- */
+.btn{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.02em;padding:10px 18px;border:1px solid var(--blue);background:var(--blue);color:#fff;border-radius:3px}
+.btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.btn.ghost{background:transparent;color:var(--blue);border-color:var(--rule)}
+.btn.ghost:hover{background:#E8EFF9;border-color:var(--blue)}
+.btn.small{padding:7px 12px;font-size:12px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn[disabled]:hover{background:var(--blue)}
+.btn.ghost[disabled]:hover{background:transparent}
+.panel{background:var(--panel);border:1px solid var(--rule)}
+.panel h3{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);padding:12px 16px;border-bottom:1px solid var(--rule-soft);font-family:var(--display)}
+.panel .pad{padding:14px 16px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+.empty{padding:40px 24px;text-align:center;color:var(--slate);font-size:13px}
+.empty strong{display:block;font-family:var(--display);font-size:15px;color:var(--graphite);margin-bottom:4px}
+.empty p{max-width:420px;margin:0 auto 16px}
+.banner{padding:9px 12px;border-left:3px solid var(--slate);background:#EDF1F4;font-size:12.5px;margin:10px 0}
+.banner.warn{border-left-color:var(--signal);background:var(--signal-soft)}
+.banner.bad{border-left-color:var(--flag);background:#FBEDEB;color:#7A241B}
+.yes{color:var(--pass);font-weight:600}
+.no{color:var(--flag);font-weight:600}
+
+.status{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:2px;border:1px solid;white-space:nowrap;display:inline-block}
+.s-idle{border-color:var(--rule);color:var(--slate)}
+.s-appr{border-color:var(--graphite);color:var(--graphite)}
+.s-paid{border-color:var(--blue);color:#fff;background:var(--blue)}
+.s-sched{border-color:var(--signal);color:#3A2B00;background:var(--signal)}
+.s-att{border-color:var(--pass);color:var(--pass)}
+.s-done{border-color:var(--pass);color:#fff;background:var(--pass)}
+.s-del{border-color:#0F4D3B;color:#fff;background:#0F4D3B}
+.s-bad{border-color:var(--flag);color:#fff;background:var(--flag)}
+
+/* ---------- dropzone ---------- */
+.drop{background:var(--panel);border:1px dashed var(--rule);padding:56px 32px;text-align:center;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--graphite);background:#F4F7F9}
+.drop h2{font-size:22px;font-weight:600;margin-bottom:6px}
+.drop p{color:var(--slate);margin:0 0 22px;font-size:13px}
+.checks{margin:28px auto 0;max-width:640px;text-align:left;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px 26px;font-size:12px;color:var(--slate)}
+.checks li{list-style:none}
+.checks li::before{content:'—';color:var(--rule);margin-right:8px}
+.checks ul{margin:0;padding:0}
+
+/* ---------- batch tag (signature) ---------- */
+.grid-head{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+.tag{position:relative;display:grid;grid-template-columns:14px 1fr;background:var(--panel);border:1px solid var(--rule);box-shadow:0 1px 0 rgba(28,33,38,.06)}
+.tag .band{background:var(--slate)}
+.tag.ready .band{background:var(--pass)}
+.tag.blocked .band{background:var(--flag)}
+.tag .body{padding:18px 20px 20px 26px}
+.tag .punch{position:absolute;left:32px;top:16px;width:13px;height:13px;border-radius:50%;background:var(--field);box-shadow:inset 0 1px 2px rgba(28,33,38,.35)}
+.tag .body .eyebrow{margin-left:24px}
+.tag input.batch{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:-.015em;border:0;border-bottom:1px solid var(--rule-soft);background:transparent;width:100%;padding:6px 0 4px;margin:8px 0 2px;color:var(--graphite)}
+.tag input.batch:hover{border-bottom-color:var(--rule)}
+.tag input.batch:focus{outline:0;border-bottom-color:var(--graphite)}
+.tag .meta{font-size:12px;color:var(--slate);margin-bottom:14px}
+.tag .total{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em}
+.tag .total small{font-size:11px;color:var(--slate);font-weight:400;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+.tag .verdict{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule-soft);font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.tag.ready .verdict{color:var(--pass)}
+.tag.blocked .verdict{color:var(--flag)}
+.tag .verdict em{display:block;font-style:normal;font-family:var(--body);font-weight:400;font-size:12px;letter-spacing:0;text-transform:none;color:var(--slate);margin-top:4px}
+
+/* ---------- meters ---------- */
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.meter{background:var(--panel);padding:14px 16px}
+.meter .n{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.02em;display:block}
+.meter .k{font-size:11px;color:var(--slate)}
+.meter.warn .n{color:var(--signal)}
+.meter.bad .n{color:var(--flag)}
+.meter.good .n{color:var(--pass)}
+
+/* ---------- issue list & breakdown ---------- */
+.issue{display:flex;gap:12px;align-items:baseline;width:100%;text-align:left;padding:9px 16px;border:0;border-bottom:1px solid var(--rule-soft);background:transparent}
+.issue:last-child{border-bottom:0}
+.issue:hover{background:#F4F7F9}
+.issue.on{background:#E8EFF9;box-shadow:inset 3px 0 0 var(--blue)}
+.issue .dot{width:7px;height:7px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.issue.blocking .dot{background:var(--flag)}
+.issue.warning .dot{background:var(--signal)}
+.issue.info .dot{background:var(--rule)}
+.issue .txt{flex:1;font-size:13px}
+.issue .txt small{display:block;color:var(--slate);font-size:11.5px;margin-top:1px;font-family:var(--mono)}
+.issue .cnt{font-family:var(--mono);font-size:13px;font-weight:600}
+.bd{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--rule-soft)}
+.bd:last-child{border-bottom:0}
+.bd span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.bd.sum{font-weight:600;border-top:1px solid var(--rule);border-bottom:0;margin-top:4px;padding-top:8px}
+
+/* ---------- toolbar ---------- */
+.toolbar{margin-top:22px;background:var(--panel);border:1px solid var(--rule);padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:sticky;top:97px;z-index:12}
+.chip{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:.02em;padding:6px 11px;border:1px solid var(--rule);background:var(--panel);color:var(--slate);border-radius:2px}
+.chip:hover{border-color:var(--slate);color:var(--graphite)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.on.warn{background:var(--signal);border-color:var(--signal);color:#2B2100}
+.chip.on.bad{background:var(--flag);border-color:var(--flag);color:#fff}
+.chip .c{font-family:var(--mono);opacity:.75;margin-left:6px}
+.toolbar input[type=search],.toolbar select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--rule);background:var(--panel);color:var(--graphite);border-radius:2px}
+.toolbar input[type=search]{min-width:210px;font-family:var(--mono);font-size:12.5px}
+.toolbar .grow{margin-left:auto;display:flex;gap:8px;align-items:center}
+.count{font-size:12px;color:var(--slate);font-family:var(--mono)}
+
+/* ---------- tables ---------- */
+.tablewrap{border:1px solid var(--rule);border-top:0;background:var(--panel);overflow:auto;max-height:70vh}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px}
+thead th{position:sticky;top:0;z-index:5;background:#DEE8F5;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);text-align:left;padding:9px 10px;white-space:nowrap;border-bottom:1px solid var(--rule)}
+thead th.num{text-align:right}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--rule-soft);white-space:nowrap;vertical-align:top}
+tbody td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody td.id{font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody tr:hover td{background:#F4F7F9}
+tbody tr.sel td{background:#E8EFF9}
+td.gutter{padding:0;width:4px;border-bottom:0}
+td.gutter div{width:4px;height:100%;min-height:30px;background:transparent}
+tr.blocking td.gutter div{background:var(--flag)}
+tr.warning td.gutter div{background:var(--signal)}
+tr.clean td.gutter div{background:var(--pass)}
+tr.info td.gutter div{background:var(--blue)}
+.rowno{color:var(--slate);font-family:var(--mono);font-size:11px}
+.badge{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border:1px solid var(--rule);color:var(--slate);border-radius:2px}
+.badge.new{border-color:var(--graphite);color:var(--graphite)}
+.expired{color:var(--flag)}
+.missing{color:var(--rule)}
+.flagcell button{border:0;background:transparent;padding:0;font-family:var(--mono);font-size:11.5px;color:var(--slate);text-decoration:underline;text-underline-offset:2px}
+tr.detail td{background:#F9FBFC;white-space:normal;padding:6px 10px 12px 14px}
+tr.detail ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+tr.detail li{font-size:12px;display:flex;gap:8px;align-items:baseline}
+tr.detail .dot{width:6px;height:6px;border-radius:50%;flex:none}
+tr.detail li.blocking .dot{background:var(--flag)}
+tr.detail li.warning .dot{background:var(--signal)}
+tr.detail li.info .dot{background:var(--rule)}
+tr.detail code{font-family:var(--mono);font-size:10.5px;color:var(--slate)}
+
+/* ---------- actions strip ---------- */
+.actions{margin-top:20px;background:var(--panel);border:1px solid var(--rule);padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.actions .note{font-size:12px;color:var(--slate);max-width:620px}
+
+/* ---------- bulk ---------- */
+.modes{display:flex;gap:2px;background:var(--rule);border:1px solid var(--rule);width:max-content}
+.mode{font-family:var(--display);font-weight:600;font-size:13px;background:var(--panel);border:0;padding:10px 20px;color:var(--slate)}
+.mode:hover{color:var(--graphite)}
+.mode.on{background:var(--blue);color:#fff}
+.bulkgrid{margin-top:16px;align-items:start}
+textarea[data-bind]{width:100%;min-height:190px;resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6;padding:10px;border:1px solid var(--rule);border-radius:2px;background:#FBFCFD;color:var(--graphite)}
+textarea[data-bind]:focus{outline:0;border-color:var(--graphite);background:var(--panel)}
+.fields{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}
+.fields label,.of-date{display:flex;flex-direction:column;gap:4px;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.fields input,.of-date input{font:inherit;font-family:var(--mono);font-size:13px;padding:7px 9px;border:1px solid var(--rule);border-radius:2px;background:var(--panel);color:var(--graphite);letter-spacing:0;text-transform:none}
+.rowbtns{display:flex;gap:10px;flex-wrap:wrap}
+.verdicts{display:flex;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:12px;flex-wrap:wrap}
+.vchip{background:var(--panel);padding:10px 14px;flex:1;min-width:96px}
+.vchip .n{font-family:var(--mono);font-size:19px;font-weight:600;display:block}
+.vchip .k{font-size:11px;color:var(--slate)}
+.vchip.good .n{color:var(--pass)}
+.vchip.warn .n{color:var(--signal)}
+.vchip.bad .n{color:var(--flag)}
+.check{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--slate)}
+.pastebox{margin-top:-1px;border-top:0}
+.pastebox .rowbtns{margin-top:10px}
+th.tick,td.tick{width:34px;text-align:center;padding-left:12px}
+td.tick input{width:16px;height:16px;accent-color:var(--graphite);cursor:pointer;margin:2px 0 0}
+td.tick .lock{color:var(--rule)}
+.apprcell{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.apprcell input{font:inherit;font-family:var(--mono);font-size:12px;padding:5px 7px;border:1px solid var(--rule);border-radius:2px;background:var(--panel)}
+/* ---------- photos ---------- */
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.slot{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:88px;border:1px dashed var(--rule);background:#FBFCFD;border-radius:2px;cursor:pointer;
+  padding:10px;text-align:center;overflow:hidden;
+}
+.slot:hover{border-color:var(--graphite);background:#F4F7F9}
+.slot .cam{font-size:20px;color:var(--slate);line-height:1}
+.slot .slabel{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--slate)}
+.slot.filled{border-style:solid;border-color:var(--rule);padding:0;background:var(--rule-soft);cursor:default}
+.slot.filled img{width:100%;height:88px;object-fit:cover;display:block;cursor:zoom-in}
+.slot.filled .slabel{position:absolute;left:0;right:0;bottom:0;background:rgba(28,33,38,.82);color:var(--invert);padding:3px 0}
+.slot.filled .rm{
+  position:absolute;top:4px;right:4px;width:22px;height:22px;line-height:1;border:0;border-radius:2px;
+  background:rgba(28,33,38,.75);color:#fff;font-size:15px;padding:0;
+}
+.slot.filled .rm:hover{background:var(--flag)}
+.viewer{position:fixed;inset:0;z-index:60;background:rgba(16,20,23,.94);display:flex;flex-direction:column;padding:14px}
+.vhead{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--invert);font-family:var(--display);font-size:13px;font-weight:600;padding-bottom:12px}
+.vhead .vbtns{display:flex;gap:8px;align-items:center}
+.vhead a.btn{text-decoration:none;display:inline-block}
+.vhead .btn.ghost{color:var(--invert);border-color:#4A555E}
+.vhead .btn.ghost:hover{background:#2B333A}
+.viewer img{flex:1;min-height:0;width:100%;object-fit:contain}
+
+.applybar{
+  position:sticky;bottom:0;z-index:14;margin-top:0;
+  background:var(--panel);border:1px solid var(--rule);border-top:3px solid var(--blue);
+  padding:14px 16px;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;
+  box-shadow:0 -6px 18px rgba(28,33,38,.08);
+}
+.applybar label{display:flex;flex-direction:column;gap:4px;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.applybar input{font:inherit;font-family:var(--mono);font-size:13px;padding:7px 9px;border:1px solid var(--rule);border-radius:2px;background:var(--panel);color:var(--graphite);letter-spacing:0;text-transform:none}
+.applybar .grow{margin-left:auto;display:flex;gap:10px;align-items:center}
+.selinfo{display:flex;flex-direction:column;line-height:1.1}
+.selinfo .n{font-family:var(--mono);font-size:26px;font-weight:600}
+.selinfo .k{font-size:11px;color:var(--slate)}
+
+/* ---------- office ---------- */
+.officebar{background:var(--panel);border:1px solid var(--rule);padding:14px 16px;display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.of-meters{display:flex;gap:22px}
+.of-meters .n{font-family:var(--mono);font-size:22px;font-weight:600;display:block;line-height:1.1}
+.of-meters .k{font-size:11px;color:var(--slate)}
+.officebar input[type=search]{flex:1;min-width:220px;font-family:var(--mono);font-size:13px;padding:9px 11px;border:1px solid var(--rule);border-radius:2px;background:var(--panel)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:14px}
+.card{background:var(--panel);border:1px solid var(--rule);padding:14px 16px}
+.card.locked{background:#F7F8F9;border-color:var(--rule-soft)}
+.card.editing{border-color:var(--graphite);box-shadow:0 0 0 2px rgba(28,33,38,.08)}
+.card-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.card .who{font-family:var(--display);font-weight:700;font-size:18px;line-height:1.25;color:var(--graphite)}
+.card .sub{font-size:12.5px;color:var(--slate)}
+.card-m{font-size:12.5px;color:var(--slate);margin-top:6px}
+.card-a{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.card-a .btn{flex:1;min-width:88px;text-align:center}
+.finish{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule-soft)}
+.finish label{display:flex;flex-direction:column;gap:4px;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.finish input{font:inherit;font-family:var(--mono);font-size:14px;padding:9px 10px;border:1px solid var(--rule);border-radius:2px;text-transform:none;letter-spacing:0}
+.trail{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule-soft);display:grid;gap:2px}
+.trail span{font-family:var(--mono);font-size:11px;color:var(--slate)}
+
+/* ---------- dashboard ---------- */
+.barrow{display:grid;grid-template-columns:120px 1fr 40px 76px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--rule-soft)}
+.barrow:last-of-type{border-bottom:0}
+.bl{font-size:12.5px;font-weight:500;line-height:1.2}
+.bl em{display:block;font-style:normal;font-size:10.5px;color:var(--slate);font-weight:400}
+.bt{height:10px;background:var(--rule-soft);border-radius:1px;overflow:hidden}
+.bt i{display:block;height:100%;background:var(--blue);transition:width .25s ease}
+.bn{text-align:right;font-size:13.5px;font-weight:600}
+.bw{font-size:10.5px;color:var(--signal);font-family:var(--mono);text-align:right;white-space:nowrap}
+@media(max-width:620px){.barrow{grid-template-columns:96px 1fr 34px;gap:8px}.bw{display:none}}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--graphite);color:var(--invert);padding:11px 18px;border-radius:2px;font-size:13px;z-index:50;box-shadow:0 6px 20px rgba(28,33,38,.25)}
+
+
+/* ---------- shell / session ---------- */
+.boot{padding:80px 20px;text-align:center;color:var(--slate);font-size:14px}
+.signin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card-signin{background:var(--panel);border:1px solid var(--rule);padding:34px 30px;width:100%;max-width:380px}
+.card-signin .brand.big{font-size:22px;color:var(--graphite);margin-bottom:2px}
+.card-signin .brand.big span{color:var(--signal)}
+.card-signin>p.sub{margin:0 0 22px}
+.card-signin label{display:block;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate);margin-bottom:14px}
+.card-signin input{display:block;width:100%;margin-top:5px;font:inherit;font-size:15px;padding:10px 11px;border:1px solid var(--rule);border-radius:2px;background:var(--panel);color:var(--graphite);text-transform:none;letter-spacing:0}
+.card-signin input:focus{outline:0;border-color:var(--graphite)}
+.btn.wide{width:100%;margin-top:6px;padding:12px}
+.session{background:transparent;border:1px solid rgba(255,255,255,.28);color:var(--invert);border-radius:3px;padding:4px 9px;text-align:left;line-height:1.15;font-size:12px;font-family:var(--display);font-weight:600}
+.session em{display:block;font-style:normal;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#A9C0DC;font-weight:700}
+.session:hover{background:rgba(255,255,255,.12)}
+.netpill{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:2px;background:#2B333A;color:#9EAEB9;white-space:nowrap;cursor:pointer}
+.netpill.ok{color:#7FD3B4}
+.netpill.wait{background:var(--signal);color:#3A2B00;font-weight:600}
+.netpill.off{background:var(--flag);color:#fff}
+.netpill.busy{color:var(--invert)}
+.topbanner{padding:10px 18px;font-size:12.5px;border-bottom:1px solid var(--rule)}
+.topbanner.warn{background:var(--signal-soft);color:#6B4E0B;border-bottom-color:var(--signal)}
+.topbanner.bad{background:#FBEDEB;color:#7A241B}
+.s-self{border-color:#0F6F7A;color:#fff;background:#0F6F7A}
+.linkbtn{border:0;background:transparent;padding:0;font-family:var(--body);font-size:12px;color:var(--graphite);text-decoration:underline;text-underline-offset:2px}
+.linkbtn:hover{color:var(--flag)}
+.renewform{padding:12px 4px 6px}
+.renewform .fields{margin:10px 0}
+.renewform .fields label{min-width:150px}
+@media(prefers-reduced-motion:no-preference){
+  .reveal{animation:rise .28s cubic-bezier(.22,.7,.3,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+@media(max-width:1000px){.grid-head{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
+@media(max-width:620px){
+  main{padding:14px 12px 70px}
+  .card{padding:16px}
+  .card .who{font-size:19px}
+  .card .sub,.card-m{font-size:13px}
+  .card-a .btn{padding:12px 10px;font-size:13.5px}
+  .slot{min-height:96px}
+  .slot .slabel{font-size:11px}
+  .status{font-size:10.5px;padding:4px 8px}
+  .toolbar{position:static}
+  .drop{padding:36px 18px}
+  .tag input.batch{font-size:20px}
+  .topbar{gap:10px;padding:0 12px}
+  .topbar label{display:none}
+  .cards{grid-template-columns:1fr}
+  .officebar{gap:12px}
+  .of-meters{gap:16px}
+  .modes{width:100%}
+  .mode{flex:1;padding:10px 8px}
+}
+</style>
+</head>
+<body>
+
+<div id="app"><div class="boot">Loading…</div></div>
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* DL Tracker — import & validation engine
+   Pure logic, no DOM. Runs in Node (tests) and in the browser (app). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.DLParser = factory();
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var CURRENCY = 'USD';
+
+  /* ---------- reference tables (derived from the September 2026 workbook) ---------- */
+
+  var LICENSE_FEE = { 'CHAFFUER': 45, 'CHAUFFEUR': 45, 'HEAVY DUTY': 100 };
+  var PROCESS_FEE = { 'New': 25, 'Renewal': 15 };
+  var EYE_TEST_FEE = 3;
+  // DRIVING TEST FEE is deliberately not validated — it is charged case by case.
+
+  var CANONICAL = [
+    'COMPANY', 'REG NO', 'NAME', 'SURNAME', 'DEPARTMENT', 'JOB TITLE', 'TYPE',
+    'DL NO', 'CLASS', 'DL EXPIRE DATE', 'LOCATION', 'NATIONAL ID NO',
+    'DATE OF BIRTH', 'PHONE NUMBER', 'AMOUNT', 'PROCESS FEES',
+    'DRIVING TEST FEE', 'EYE TEST FEE', 'NOTES-BILL NUMBER', 'NOTE'
+  ];
+
+  var REQUIRED = ['COMPANY', 'REG NO', 'NAME', 'SURNAME'];
+  var IGNORED = ['NO', '#', 'S/N', 'SN'];
+
+  var ALIASES = {
+    'REGNO': 'REG NO', 'REG. NO': 'REG NO', 'REG NUMBER': 'REG NO',
+    'DLNO': 'DL NO', 'DL NUMBER': 'DL NO', 'DL. NO': 'DL NO',
+    'DL EXPIRY DATE': 'DL EXPIRE DATE', 'EXPIRE DATE': 'DL EXPIRE DATE',
+    'NATIONAL ID': 'NATIONAL ID NO', 'NATIONAL ID NUMBER': 'NATIONAL ID NO',
+    'DOB': 'DATE OF BIRTH', 'PHONE': 'PHONE NUMBER', 'PHONE NO': 'PHONE NUMBER',
+    'PROCESS FEE': 'PROCESS FEES', 'NOTES - BILL NUMBER': 'NOTES-BILL NUMBER',
+    'NOTES BILL NUMBER': 'NOTES-BILL NUMBER', 'BILL NUMBER': 'NOTES-BILL NUMBER',
+    'JOBTITLE': 'JOB TITLE', 'SUR NAME': 'SURNAME'
+  };
+
+  var MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
+    'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+
+  /* ---------- issue catalogue ---------- */
+
+  var SEVERITY = { BLOCK: 'blocking', WARN: 'warning', INFO: 'info' };
+
+  /* ---------- value coercion ---------- */
+
+  function normHeader(v) {
+    return String(v == null ? '' : v)
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
+  }
+
+  function canonicalHeader(v) {
+    var h = normHeader(v);
+    if (!h) return null;
+    if (IGNORED.indexOf(h) !== -1) return '__IGNORE__';
+    if (CANONICAL.indexOf(h) !== -1) return h;
+    if (ALIASES[h]) return ALIASES[h];
+    return null;
+  }
+
+  // Text that must never become a number: REG NO, DL NO, NATIONAL ID NO, PHONE.
+  function toText(v) {
+    if (v == null) return '';
+    if (v instanceof Date) return formatDate(v);
+    if (typeof v === 'number') {
+      if (!isFinite(v)) return '';
+      // avoid 2.98056018e+9 style output
+      return Number.isInteger(v) ? v.toFixed(0) : String(v);
+    }
+    return String(v).replace(/\u00a0/g, ' ').trim();
+  }
+
+  function isBlank(v) { return toText(v) === ''; }
+
+  function toMoney(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : NaN;
+    var s = String(v).replace(/[$,\s]/g, '').replace(/\u00a0/g, '');
+    if (s === '') return null;
+    var n = Number(s);
+    return isNaN(n) ? NaN : n;
+  }
+
+  // Excel serial -> JS Date (1900 system, with the Lotus leap-year bug)
+  function serialToDate(n) {
+    var ms = Math.round((n - 25569) * 86400 * 1000);
+    var d = new Date(ms);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+
+  // Dates are day-month-year. Never month-day-year.
+  function toDate(v) {
+    if (v == null || v === '') return null;
+    if (v instanceof Date) {
+      if (isNaN(v.getTime())) return NaN;
+      return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+    }
+    if (typeof v === 'number') {
+      if (v < 1 || v > 80000) return NaN;
+      return serialToDate(v);
+    }
+    var s = String(v).trim();
+    if (!s) return null;
+    var m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+    if (m) {
+      var d = +m[1], mo = +m[2], y = +m[3];
+      if (y < 100) y += y < 50 ? 2000 : 1900;
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) return NaN;
+      var dt = new Date(y, mo - 1, d);
+      return (dt.getMonth() === mo - 1 && dt.getDate() === d) ? dt : NaN;
+    }
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); // ISO
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+    return NaN;
+  }
+
+  function formatDate(d) {
+    if (!d || !(d instanceof Date) || isNaN(d.getTime())) return '';
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  function money(n) {
+    if (n == null || isNaN(n)) return '';
+    return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+  /* ---------- batch name from file name ---------- */
+
+  function suggestBatchName(fileName) {
+    var s = String(fileName || '').toUpperCase();
+    for (var i = 0; i < MONTHS.length; i++) {
+      var idx = s.indexOf(MONTHS[i]);
+      if (idx !== -1) {
+        var tail = s.slice(idx + MONTHS[i].length);
+        var y = tail.match(/(20\d{2})/) || s.match(/(20\d{2})/);
+        var name = MONTHS[i].charAt(0) + MONTHS[i].slice(1).toLowerCase();
+        return y ? name + ' ' + y[1] : name;
+      }
+    }
+    return '';
+  }
+
+  /* ---------- main ---------- */
+
+  /**
+   * @param {Array<Array>} matrix  sheet as array-of-arrays (row 0 = header)
+   * @param {Object} opts { fileName, sheetName, today, existingRegNos }
+   */
+  function parseMatrix(matrix, opts) {
+    opts = opts || {};
+    var today = startOfDay(opts.today ? new Date(opts.today) : new Date());
+    var existing = opts.existingRegNos || {};
+
+    var result = {
+      fileName: opts.fileName || '',
+      sheetName: opts.sheetName || '',
+      currency: CURRENCY,
+      suggestedBatch: suggestBatchName(opts.fileName),
+      headers: { mapped: {}, unknown: [], missing: [] },
+      rows: [],
+      fileIssues: [],
+      summary: null
+    };
+
+    if (!matrix || !matrix.length) {
+      result.fileIssues.push({ code: 'EMPTY_SHEET', severity: SEVERITY.BLOCK, message: 'The sheet has no rows.' });
+      result.summary = emptySummary();
+      return result;
+    }
+
+    /* header row: first row that maps at least 5 known columns */
+    var headerRowIdx = -1, headerMap = null;
+    for (var r = 0; r < Math.min(matrix.length, 10); r++) {
+      var map = {}, hits = 0, unknown = [];
+      (matrix[r] || []).forEach(function (cell, c) {
+        var canon = canonicalHeader(cell);
+        if (canon === '__IGNORE__') return;
+        if (canon) { if (!(canon in map)) map[canon] = c; hits++; }
+        else if (normHeader(cell)) unknown.push(normHeader(cell));
+      });
+      if (hits >= 5) { headerRowIdx = r; headerMap = map; result.headers.unknown = unknown; break; }
+    }
+
+    if (headerRowIdx === -1) {
+      result.fileIssues.push({
+        code: 'NO_HEADER_ROW', severity: SEVERITY.BLOCK,
+        message: 'No header row found. The first row must contain the column names.'
+      });
+      result.summary = emptySummary();
+      return result;
+    }
+
+    result.headers.mapped = headerMap;
+    CANONICAL.forEach(function (c) { if (!(c in headerMap)) result.headers.missing.push(c); });
+    REQUIRED.forEach(function (c) {
+      if (!(c in headerMap)) {
+        result.fileIssues.push({
+          code: 'MISSING_REQUIRED_COLUMN', severity: SEVERITY.BLOCK,
+          message: 'Required column "' + c + '" is not in the file.'
+        });
+      }
+    });
+
+    var get = function (row, name) {
+      var i = headerMap[name];
+      return i === undefined ? null : row[i];
+    };
+
+    /* pass 1 — read and coerce */
+    var regSeen = {}, dlSeen = {}, nidSeen = {}, seq = 0;
+    for (var i = headerRowIdx + 1; i < matrix.length; i++) {
+      var raw = matrix[i] || [];
+      var allBlank = raw.every(function (c) { return c == null || String(c).trim() === ''; });
+      if (allBlank) continue;
+
+      var expire = toDate(get(raw, 'DL EXPIRE DATE'));
+      var dob = toDate(get(raw, 'DATE OF BIRTH'));
+      seq++;
+      var rec = {
+        index: seq,
+        excelRow: i + 1,
+        company: toText(get(raw, 'COMPANY')).toUpperCase(),
+        regNo: toText(get(raw, 'REG NO')),
+        name: toText(get(raw, 'NAME')),
+        surname: toText(get(raw, 'SURNAME')),
+        department: toText(get(raw, 'DEPARTMENT')),
+        jobTitle: toText(get(raw, 'JOB TITLE')),
+        licenseType: toText(get(raw, 'TYPE')),
+        dlNo: toText(get(raw, 'DL NO')),
+        dlClass: toText(get(raw, 'CLASS')),
+        dlExpireDate: expire instanceof Date ? expire : null,
+        dlExpireRaw: get(raw, 'DL EXPIRE DATE'),
+        location: toText(get(raw, 'LOCATION')),
+        nationalId: toText(get(raw, 'NATIONAL ID NO')),
+        dateOfBirth: dob instanceof Date ? dob : null,
+        dobRaw: get(raw, 'DATE OF BIRTH'),
+        phone: toText(get(raw, 'PHONE NUMBER')),
+        amount: toMoney(get(raw, 'AMOUNT')),
+        processFee: toMoney(get(raw, 'PROCESS FEES')),
+        drivingTestFee: toMoney(get(raw, 'DRIVING TEST FEE')),
+        eyeTestFee: toMoney(get(raw, 'EYE TEST FEE')),
+        billNumber: toText(get(raw, 'NOTES-BILL NUMBER')),
+        note: toText(get(raw, 'NOTE')),
+        issues: []
+      };
+
+      // New vs Renewal is derived from DL NO, never taken from TYPE.
+      rec.applicationType = rec.dlNo ? 'Renewal' : 'New';
+      rec.total = (rec.amount || 0) + (rec.processFee || 0) + (rec.drivingTestFee || 0) + (rec.eyeTestFee || 0);
+
+      var key = rec.regNo.toUpperCase();
+      if (key) (regSeen[key] = regSeen[key] || []).push(rec.index);
+      if (rec.dlNo) (dlSeen[rec.dlNo.toUpperCase()] = dlSeen[rec.dlNo.toUpperCase()] || []).push(rec.index);
+      if (rec.nationalId) (nidSeen[rec.nationalId.toUpperCase()] = nidSeen[rec.nationalId.toUpperCase()] || []).push(rec.index);
+
+      result.rows.push(rec);
+    }
+
+    /* pass 2 — validate */
+    result.rows.forEach(function (rec) {
+      var add = function (code, severity, message) { rec.issues.push({ code: code, severity: severity, message: message }); };
+
+      if (!rec.regNo) add('MISSING_REG_NO', SEVERITY.BLOCK, 'REG NO is empty.');
+      if (!rec.name) add('MISSING_NAME', SEVERITY.BLOCK, 'NAME is empty.');
+      if (!rec.surname) add('MISSING_SURNAME', SEVERITY.BLOCK, 'SURNAME is empty.');
+      if (!rec.company) add('MISSING_COMPANY', SEVERITY.BLOCK, 'COMPANY is empty.');
+
+      var dupRows = rec.regNo ? regSeen[rec.regNo.toUpperCase()] : null;
+      if (dupRows && dupRows.length > 1) {
+        add('DUPLICATE_REG_NO_IN_FILE', SEVERITY.BLOCK,
+          'REG NO ' + rec.regNo + ' appears ' + dupRows.length + ' times in this file (#' + dupRows.join(', #') + ').');
+      }
+      if (rec.regNo && existing[rec.regNo.toUpperCase()]) {
+        add('OPEN_APPLICATION_EXISTS', SEVERITY.BLOCK,
+          rec.regNo + ' already has an open application in ' + existing[rec.regNo.toUpperCase()] + '.');
+      }
+
+      if (rec.dlNo && dlSeen[rec.dlNo.toUpperCase()].length > 1) {
+        add('DUPLICATE_DL_NO_IN_FILE', SEVERITY.WARN,
+          'DL NO ' + rec.dlNo + ' is shared with #' + dlSeen[rec.dlNo.toUpperCase()].filter(function (n) { return n !== rec.index; }).join(', #') + '.');
+      }
+      if (rec.nationalId && nidSeen[rec.nationalId.toUpperCase()].length > 1) {
+        add('DUPLICATE_NATIONAL_ID_IN_FILE', SEVERITY.WARN,
+          'National ID ' + rec.nationalId + ' is shared with #' + nidSeen[rec.nationalId.toUpperCase()].filter(function (n) { return n !== rec.index; }).join(', #') + '.');
+      }
+
+      // dates
+      if (rec.dlExpireRaw != null && String(rec.dlExpireRaw).trim() !== '' && !rec.dlExpireDate) {
+        add('BAD_EXPIRE_DATE', SEVERITY.BLOCK, 'DL EXPIRE DATE could not be read as a day/month/year date.');
+      }
+      if (rec.dobRaw != null && String(rec.dobRaw).trim() !== '' && !rec.dateOfBirth) {
+        add('BAD_DOB', SEVERITY.BLOCK, 'DATE OF BIRTH could not be read as a day/month/year date.');
+      }
+      if (rec.applicationType === 'Renewal' && !rec.dlExpireDate) {
+        add('MISSING_EXPIRE_DATE', SEVERITY.WARN, 'Renewal with no expiry date on record.');
+      }
+      if (rec.dlExpireDate && rec.dlExpireDate < today) {
+        add('ALREADY_EXPIRED', SEVERITY.WARN, 'Licence expired on ' + formatDate(rec.dlExpireDate) + '.');
+      }
+
+      // money
+      ['amount', 'processFee', 'drivingTestFee', 'eyeTestFee'].forEach(function (f) {
+        if (isNaN(rec[f]) && rec[f] !== null) {
+          add('BAD_' + f.toUpperCase(), SEVERITY.BLOCK, f + ' is not a number.');
+        }
+      });
+
+      var fee = LICENSE_FEE[rec.licenseType.toUpperCase()];
+      if (!rec.licenseType) {
+        add('MISSING_LICENSE_TYPE', SEVERITY.WARN, 'TYPE is empty, so the licence fee cannot be checked.');
+      } else if (fee === undefined) {
+        add('UNKNOWN_LICENSE_TYPE', SEVERITY.WARN, '"' + rec.licenseType + '" is not a known licence category.');
+      } else if (rec.amount != null && !isNaN(rec.amount) && rec.amount !== fee) {
+        add('AMOUNT_MISMATCH', SEVERITY.WARN,
+          'AMOUNT is ' + money(rec.amount) + '; ' + rec.licenseType + ' is normally ' + money(fee) + '.');
+      }
+      rec.expectedAmount = fee === undefined ? null : fee;
+
+      var pf = PROCESS_FEE[rec.applicationType];
+      if (rec.processFee != null && !isNaN(rec.processFee) && rec.processFee !== pf) {
+        add('PROCESS_FEE_MISMATCH', SEVERITY.WARN,
+          'PROCESS FEES is ' + money(rec.processFee) + '; a ' + rec.applicationType.toLowerCase() + ' is normally ' + money(pf) + '.');
+      }
+      rec.expectedProcessFee = pf;
+
+      if (rec.eyeTestFee == null) add('MISSING_EYE_TEST_FEE', SEVERITY.INFO, 'No eye test fee recorded (normally ' + money(EYE_TEST_FEE) + ').');
+
+      // soft data quality
+      if (!rec.nationalId) add('MISSING_NATIONAL_ID', SEVERITY.INFO, 'No national ID or passport number.');
+      if (!rec.phone) add('MISSING_PHONE', SEVERITY.INFO, 'No phone number.');
+      else if (!/^231-\d{3}-\d{3}-\d{3}$/.test(rec.phone)) add('PHONE_FORMAT', SEVERITY.INFO, 'Phone is not in 231-000-000-000 form.');
+      if (rec.dlNo && !/^DL\d{7}$/i.test(rec.dlNo)) add('DL_NO_FORMAT', SEVERITY.INFO, 'DL NO does not follow the usual DL0000000 pattern.');
+
+      rec.severity = rec.issues.some(function (x) { return x.severity === SEVERITY.BLOCK; }) ? SEVERITY.BLOCK
+        : rec.issues.some(function (x) { return x.severity === SEVERITY.WARN; }) ? SEVERITY.WARN
+          : rec.issues.length ? SEVERITY.INFO : 'clean';
+
+      rec.expiryBucket = !rec.dlExpireDate ? 'none'
+        : rec.dlExpireDate < today ? 'expired'
+          : rec.dlExpireDate <= new Date(today.getFullYear(), today.getMonth() + 3, today.getDate()) ? 'soon'
+            : 'later';
+    });
+
+    result.summary = summarize(result.rows, today);
+    return result;
+  }
+
+  function emptySummary() {
+    return {
+      total: 0, clean: 0, blocking: 0, warning: 0, info: 0,
+      byCompany: {}, byLicenseType: {}, byApplicationType: {}, byLocation: {}, byDepartment: {},
+      expiry: { expired: 0, soon: 0, later: 0, none: 0 },
+      money: { amount: 0, processFee: 0, drivingTestFee: 0, eyeTestFee: 0, total: 0 },
+      issueCounts: {}
+    };
+  }
+
+  function summarize(rows, today) {
+    var s = emptySummary();
+    s.total = rows.length;
+    rows.forEach(function (r) {
+      if (r.severity === SEVERITY.BLOCK) s.blocking++;
+      else if (r.severity === SEVERITY.WARN) s.warning++;
+      else if (r.severity === SEVERITY.INFO) s.info++;
+      else s.clean++;
+
+      var bump = function (obj, k) { if (k) obj[k] = (obj[k] || 0) + 1; };
+      bump(s.byCompany, r.company);
+      bump(s.byLicenseType, r.licenseType);
+      bump(s.byApplicationType, r.applicationType);
+      bump(s.byLocation, r.location);
+      bump(s.byDepartment, r.department);
+      s.expiry[r.expiryBucket]++;
+
+      s.money.amount += r.amount || 0;
+      s.money.processFee += r.processFee || 0;
+      s.money.drivingTestFee += r.drivingTestFee || 0;
+      s.money.eyeTestFee += r.eyeTestFee || 0;
+      s.money.total += r.total || 0;
+
+      r.issues.forEach(function (x) {
+        s.issueCounts[x.code] = s.issueCounts[x.code] || { code: x.code, severity: x.severity, count: 0, rows: [] };
+        s.issueCounts[x.code].count++;
+        s.issueCounts[x.code].rows.push(r.index);
+      });
+    });
+    return s;
+  }
+
+  return {
+    parseMatrix: parseMatrix,
+    suggestBatchName: suggestBatchName,
+    toDate: toDate,
+    toText: toText,
+    toMoney: toMoney,
+    formatDate: formatDate,
+    money: money,
+    SEVERITY: SEVERITY,
+    CANONICAL: CANONICAL,
+    LICENSE_FEE: LICENSE_FEE,
+    PROCESS_FEE: PROCESS_FEE,
+    EYE_TEST_FEE: EYE_TEST_FEE,
+    CURRENCY: CURRENCY
+  };
+}));
+
+</script>
+<script>
+/* DL Tracker — client
+   Talks to the API on the office machine, keeps a local copy so the licence
+   office can work with no connection, and pushes the queue back when the
+   phone finds the network again. */
+(function () {
+'use strict';
+var P = window.DLParser;
+
+/* How often the phone talks to the office server on its own.
+   Two speeds on purpose: when something is queued, getting it out matters,
+   so it retries quickly. When there is nothing to send it is only refreshing
+   the screen, which can wait. Neither of these delays anything the user does:
+   opening the app, returning to it, and the network coming back all sync at once. */
+var SYNC_PENDING_SECONDS = 60;
+var SYNC_IDLE_MINUTES = 60;
+
+/* ================= state ================= */
+function freshImp() {
+  return { severity: 'all', issue: null, q: '', open: {} };
+}
+var S = {
+  ready: false,
+  session: null,
+  screen: 'office',
+  today: iso(new Date()),
+  data: { batches: [], applications: [], companies: [] },
+  net: { online: true, syncing: false, lastSync: '', pending: 0, error: '' },
+  parsed: null,
+  imp: freshImp(),
+  list: { q: '', batch: 'all', status: 'all', company: 'all', location: 'all', app: 'all', paid: 'all' },
+  bulk: { mode: 'appointment', batch: 'all', q: '', location: 'all', dept: 'all',
+          selected: {}, date: '', bill: '', paste: '', pasteReport: null, showPaste: false, renewing: null },
+  office: { date: '', q: '', editing: null, viewing: null },
+  login: { email: '', password: '', error: '', busy: false }
+};
+
+/* ================= helpers ================= */
+function iso(d) { var p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+function fromIso(s) { if (!s) return null; var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+function dmy(s) { var d = fromIso(s); return d ? P.formatDate(d) : ''; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function $(s, r) { return (r || document).querySelector(s); }
+function dash() { return '<span class="missing">—</span>'; }
+function num(v) { return (v == null || v === '' || isNaN(v)) ? dash() : Number(v).toLocaleString('en-US'); }
+function splitList(t) { return String(t || '').split(/[\s,;]+/).map(function (s) { return s.trim(); }).filter(Boolean); }
+function uuid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+  });
+}
+function can(p) { return !!(S.session && S.session.permissions.indexOf(p) !== -1); }
+function countBy(rows, fn) { var o = {}; rows.forEach(function (r) { var v = fn(r); if (v) o[v] = (o[v] || 0) + 1; }); return o; }
+
+/* ================= local storage =================
+   IndexedDB where the browser allows it, memory otherwise. The app keeps
+   working either way; only "survives a refresh" is lost. */
+var store = (function () {
+  var mem = { kv: {}, outbox: {} }, dbp = null;
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise(function (resolve) {
+      try {
+        if (!window.indexedDB) return resolve(null);
+        var req = indexedDB.open('dltracker', 1);
+        req.onupgradeneeded = function () {
+          var db = req.result;
+          if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+          if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'id' });
+        };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { resolve(null); };
+      } catch (e) { resolve(null); }
+    });
+    return dbp;
+  }
+  function run(name, mode, fn) {
+    return open().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (resolve, reject) {
+        var t = db.transaction(name, mode), req = fn(t.objectStore(name));
+        t.oncomplete = function () { resolve(req && 'result' in req ? req.result : null); };
+        t.onerror = function () { reject(t.error); };
+      });
+    }).catch(function () { return null; });
+  }
+  return {
+    get: function (k) {
+      return run('kv', 'readonly', function (s) { return s.get(k); })
+        .then(function (v) { return v == null ? mem.kv[k] : v; });
+    },
+    set: function (k, v) { mem.kv[k] = v; return run('kv', 'readwrite', function (s) { s.put(v, k); }); },
+    del: function (k) { delete mem.kv[k]; return run('kv', 'readwrite', function (s) { s.delete(k); }); },
+    queue: function (item) { mem.outbox[item.id] = item; return run('outbox', 'readwrite', function (s) { s.put(item); }); },
+    outbox: function () {
+      var fallback = Object.keys(mem.outbox).map(function (k) { return mem.outbox[k]; });
+      return run('outbox', 'readonly', function (s) { return s.getAll(); })
+        .then(function (v) { return (v && v.length) ? v : fallback; });
+    },
+    unqueue: function (ids) {
+      ids.forEach(function (id) { delete mem.outbox[id]; });
+      return run('outbox', 'readwrite', function (s) { ids.forEach(function (id) { s.delete(id); }); });
+    }
+  };
+})();
+
+/* ================= API ================= */
+function apiUrl(path) {
+  if (!path || path.indexOf('/') !== 0) return path;
+  var base = (window.location.pathname || '').replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+  return base ? (base + path) : path;
+}
+
+function api(path, opts) {
+  opts = opts || {};
+  var headers = { 'Content-Type': 'application/json' };
+  if (S.session) headers.Authorization = 'Bearer ' + S.session.token;
+  var ctl = window.AbortController ? new AbortController() : null;
+  var timer = ctl ? setTimeout(function () { ctl.abort(); }, opts.timeout || 15000) : null;
+  return fetch(apiUrl(path), {
+    method: opts.method || 'GET', headers: headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    signal: ctl ? ctl.signal : undefined
+  }).then(function (res) {
+    if (timer) clearTimeout(timer);
+    S.net.online = true;
+    if (res.status === 401 && S.session) { signOut(true); throw new Error('Session expired'); }
+    if (opts.raw) {
+      if (!res.ok) throw new Error('Report failed');
+      return res.blob();
+    }
+    return res.json().then(function (body) {
+      if (!res.ok) throw new Error(body && body.detail ? body.detail : 'Request failed');
+      return body;
+    });
+  }).catch(function (err) {
+    if (timer) clearTimeout(timer);
+    if (err.name === 'AbortError' || /fetch|network|load failed/i.test(err.message || '')) {
+      S.net.online = false;
+      var e = new Error('offline'); e.offline = true; throw e;
+    }
+    throw err;
+  });
+}
+
+/* ================= sync ================= */
+function refreshPending() {
+  return store.outbox().then(function (items) { S.net.pending = items.length; return items; });
+}
+function cacheData() {
+  return store.set('cache', {
+    batches: S.data.batches, applications: S.data.applications, companies: S.data.companies,
+    at: S.net.lastSync, user: S.session ? S.session.user : null,
+    permissions: S.session ? S.session.permissions : []
+  });
+}
+function pullFresh(silent) {
+  return api('/api/bootstrap', { timeout: 20000 }).then(function (b) {
+    S.session.user = b.user;
+    S.session.permissions = b.permissions;
+    S.data.batches = b.batches;
+    S.data.applications = adoptLocal(b.applications);
+    S.data.companies = b.companies;
+    S.net.lastSync = new Date().toISOString();
+    if (!silent) S.net.error = '';
+    return cacheData();
+  }).catch(function (err) {
+    if (!err.offline && !silent) S.net.error = err.message;
+  }).then(function () { render(); scheduleSync(); });
+}
+var syncTimer = null;
+function scheduleSync() {
+  clearTimeout(syncTimer);
+  if (!S.session) return;
+  var ms = S.net.pending ? SYNC_PENDING_SECONDS * 1000 : SYNC_IDLE_MINUTES * 60000;
+  syncTimer = setTimeout(function () { flush(true); }, ms);
+}
+
+function flush(silent) {
+  if (S.net.syncing || !S.session) return Promise.resolve();
+  return refreshPending().then(function (items) {
+    if (!items.length) return pullFresh(silent);
+    S.net.syncing = true; render();
+    var events = items.filter(function (i) { return i.kind === 'event'; }).map(function (i) { return i.payload; });
+    var photos = items.filter(function (i) { return i.kind === 'photo'; }).map(function (i) { return i.payload; });
+    return api('/api/sync', { method: 'POST', body: { events: events, photos: photos }, timeout: 90000 })
+      .then(function (res) {
+        var settled = {};
+        (res.accepted || []).concat(res.duplicates || []).forEach(function (k) { settled[k] = true; });
+        (res.refused || []).forEach(function (r) { settled[r.client_event_id] = true; if (r.photo) settled['photo:' + r.photo] = true; });
+        var done = items.filter(function (i) {
+          return settled[i.payload.client_event_id] || settled[i.id] || settled['photo:' + i.payload.application_id];
+        }).map(function (i) { return i.id; });
+        S.data.applications = adoptLocal(res.applications) || S.data.applications;
+        S.net.lastSync = new Date().toISOString();
+        S.net.error = (res.refused || []).length
+          ? (res.refused.length + ' item(s) refused: ' + (res.refused[0].reason || '')) : '';
+        return store.unqueue(done).then(cacheData);
+      })
+      .catch(function (err) { if (!err.offline) S.net.error = err.message; })
+      .then(function () { S.net.syncing = false; return refreshPending(); })
+      .then(function () { render(); scheduleSync(); });
+  });
+}
+
+function queueEvent(app, type, extra) {
+  var payload = {
+    client_event_id: uuid(), application_id: app.id, event_type: type,
+    occurred_at: new Date().toISOString(),
+    walk_in: app.appointment_date !== (S.office.date || S.today), device: 'office'
+  };
+  if (extra) { payload.dl_class = extra.dl_class || ''; payload.dl_no = extra.dl_no || ''; }
+  app._local = (app._local || []).concat([type]);
+  if (extra && extra.dl_class) app.dl_class = extra.dl_class;
+  if (extra && extra.dl_no) app.dl_no = extra.dl_no;
+  return store.queue({ id: payload.client_event_id, kind: 'event', payload: payload })
+    .then(refreshPending).then(function () { render(); scheduleSync(); flush(true); });
+}
+function queuePhoto(app, side, dataUrl, w, h) {
+  app._photos = app._photos || {};
+  app._photos[side] = dataUrl;
+  return store.queue({ id: 'photo:' + app.id + ':' + side, kind: 'photo',
+      payload: { application_id: app.id, side: side, data_url: dataUrl, width: w, height: h } })
+    .then(refreshPending).then(function () { render(); scheduleSync(); flush(true); });
+}
+
+/* ================= derived ================= */
+function localStatus(a) {
+  var loc = a._local || [];
+  if (loc.indexOf('COMPLETED') !== -1) return 'Completed';
+  if (loc[loc.length - 1] === 'NO_SHOW') return 'No show';
+  if (loc.indexOf('ATTENDED') !== -1 && ['Completed', 'Delivered'].indexOf(a.status) === -1) return 'Attended';
+  return a.status;
+}
+function blockTick(a) {
+  if (!a.payment_paid) return 'Payment not recorded';
+  if (a.self_renewed_on) return 'This person renewed their own licence';
+  if (a.delivered_on) return 'Already delivered';
+  return null;
+}
+/* An <img src> cannot carry the sign-in token, which is why the server used to
+   answer 401. So the picture is fetched properly and handed to the page as a
+   local blob. Each one is fetched once and kept. */
+var photoCache = {};
+function loadPhoto(id, side) {
+  var key = id + ':' + side;
+  photoCache[key] = 'loading';
+  api('/api/photos/' + id + '/' + side, { raw: true, timeout: 30000 })
+    .then(function (blob) { photoCache[key] = URL.createObjectURL(blob); render(); })
+    .catch(function (err) {
+      if (err && err.offline) delete photoCache[key];   // try again once the network is back
+      else photoCache[key] = '';                        // that side simply has no picture
+    });
+}
+function photoOf(a, side) {
+  if (a._photos && a._photos[side]) return a._photos[side];   // taken on this device
+  var key = a.id + ':' + side, hit = photoCache[key];
+  if (hit && hit !== 'loading') return hit;
+  if (!hit && a.photo_count > 0) loadPhoto(a.id, side);
+  return '';
+}
+function photoFileName(a, side) {
+  var raw = a.reg_no + '_' + a.name + '_' + a.surname + '_' + side;
+  return raw.replace(/[^A-Za-z0-9\-_]+/g, '_').replace(/_+/g, '_') + '.jpg';
+}
+/* A refresh replaces the whole list. Anything this device is still holding -
+   a photo that has not been sent yet, a tick still in the queue - has to
+   survive that, or it disappears from the screen. */
+function adoptLocal(fresh) {
+  var previous = {};
+  S.data.applications.forEach(function (a) { previous[a.id] = a; });
+  (fresh || []).forEach(function (a) {
+    var old = previous[a.id];
+    if (!old) return;
+    if (old._photos) a._photos = old._photos;
+    if (old._local && S.net.pending) a._local = old._local;
+  });
+  return fresh;
+}
+
+function findApp(id) { var o = null; S.data.applications.forEach(function (a) { if (String(a.id) === String(id)) o = a; }); return o; }
+
+/* ================= session ================= */
+function boot() {
+  store.get('token').then(function (token) {
+    if (!token) { S.ready = true; render(); return; }
+    S.session = { token: token, user: null, permissions: [] };
+    return store.get('cache').then(function (c) {
+      if (c) {
+        S.data.batches = c.batches || []; S.data.applications = c.applications || [];
+        S.data.companies = c.companies || []; S.net.lastSync = c.at || '';
+        S.session.user = c.user; S.session.permissions = c.permissions || [];
+      }
+      S.ready = true; render();
+      return refreshPending().then(function () { return flush(true); }).then(scheduleSync);
+    });
+  });
+  window.addEventListener('online', function () { S.net.online = true; flush(true); });
+  window.addEventListener('offline', function () { S.net.online = false; render(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) flush(true); });
+}
+function signIn(email, password) {
+  email = String(email || '').trim();
+  S.login.email = email;
+  S.login.password = password;
+  if (!email || !password) {
+    S.login.error = !email ? 'Type your email address.' : 'Type your password.';
+    render(); return Promise.resolve();
+  }
+  S.login.busy = true; S.login.error = ''; render();
+  return api('/api/login', { method: 'POST', body: { email: email, password: password } })
+    .then(function (r) {
+      S.session = { token: r.token, user: r.user, permissions: r.permissions };
+      S.login.password = '';
+      S.screen = r.permissions.indexOf('import') !== -1 ? 'applications' : 'office';
+      return store.set('token', r.token).then(function () { return pullFresh(); });
+    })
+    .catch(function (err) {
+      S.login.error = err.offline ? 'The server cannot be reached from this network.' : err.message;
+      S.login.password = '';           // keep the email, only the password is retyped
+    })
+    .then(function () { S.login.busy = false; render(); });
+}
+function signOut(expired) {
+  var t = S.session && S.session.token;
+  S.session = null;
+  S.data = { batches: [], applications: [], companies: [] };
+  store.del('token'); store.del('cache');
+  S.login.error = expired ? 'Your session expired. Sign in again.' : '';
+  render();
+  if (t) fetch(apiUrl('/api/logout'), { method: 'POST', headers: { Authorization: 'Bearer ' + t } }).catch(function () {});
+}
+
+/* ================= render ================= */
+var SCREENS = [
+  { id: 'office', label: 'Licence office', perm: 'view' },
+  { id: 'applications', label: 'Applications', perm: 'view' },
+  { id: 'bulk', label: 'Bulk actions', perm: 'view' },
+  { id: 'batches', label: 'Batches', perm: 'view' },
+  { id: 'import', label: 'Import', perm: 'import' },
+  { id: 'dashboard', label: 'Dashboard', perm: 'view' }
+];
+function go(id) { S.screen = id; render(); window.scrollTo(0, 0); }
+
+function timeOf(t) {
+  var d = new Date(t); if (isNaN(d)) return '';
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  var same = d.toDateString() === new Date().toDateString();
+  return (same ? '' : P.formatDate(d) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function render() {
+  var root = $('#app');
+  if (!S.ready) { root.innerHTML = '<div class="boot">Loading…</div>'; return; }
+  if (!S.session) {
+    root.innerHTML = viewLogin();
+    if (!S.login.busy) {
+      var focusOn = $(S.login.email && !S.login.password ? '#password' : '#email');
+      if (focusOn) { try { focusOn.focus(); } catch (e) {} }
+    }
+    return;
+  }
+
+  var nav = SCREENS.filter(function (s) { return can(s.perm); }).map(function (s) {
+    return '<button class="tab' + (S.screen === s.id ? ' on' : '') + '" data-act="go" data-id="' + s.id + '">' + s.label + '</button>';
+  }).join('');
+
+  var status = S.net.syncing ? '<span class="netpill busy">Syncing…</span>'
+    : S.net.pending ? '<button class="netpill wait" data-act="sync">' + S.net.pending + ' waiting to sync</button>'
+    : S.net.online ? '<button class="netpill ok" data-act="sync">Synced' + (S.net.lastSync ? ' ' + timeOf(S.net.lastSync) : '') + '</button>'
+    : '<button class="netpill off" data-act="sync">Offline</button>';
+
+  root.innerHTML =
+    '<header class="topbar"><div class="brand">DL<span>·</span>Tracker</div>' +
+      '<div class="right">' + status +
+        '<label for="dateSel">Day</label><input type="date" id="dateSel" data-bind="today" value="' + esc(S.today) + '">' +
+        '<button class="session" data-act="signout" title="Sign out" aria-label="Sign out">' + esc((S.session.user || {}).full_name || '') +
+        '<em>' + esc((S.session.user || {}).role || '') + '</em></button>' +
+      '</div></header>' +
+    '<nav class="navbar"><div id="nav">' + nav + '</div></nav>' +
+    (S.net.error ? '<div class="topbanner bad">' + esc(S.net.error) + '</div>' : '') +
+    (!S.net.online ? '<div class="topbanner warn">No connection to the office server. Keep working — everything is saved on this device and sent when the network comes back.' +
+      (S.net.lastSync ? ' Data shown is from ' + esc(timeOf(S.net.lastSync)) + '.' : '') + '</div>' : '') +
+    '<main><div id="screen">' + screenHtml() + '</div></main>';
+}
+function screenHtml() {
+  if (S.screen === 'import') return viewImport();
+  if (S.screen === 'batches') return viewBatches();
+  if (S.screen === 'applications') return viewApplications();
+  if (S.screen === 'bulk') return viewBulk();
+  if (S.screen === 'dashboard') return viewDashboard();
+  return viewOffice();
+}
+
+function viewLogin() {
+  return '<div class="signin"><div class="card-signin">' +
+    '<div class="brand big">DL<span>·</span>Tracker</div>' +
+    '<p class="sub">Driver&rsquo;s licence tracking</p>' +
+    (S.login.error ? '<div class="banner bad">' + esc(S.login.error) + '</div>' : '') +
+    '<label>Email<input type="email" id="email" data-bind="login.email" value="' + esc(S.login.email) + '" autocomplete="username" autocapitalize="none" spellcheck="false"></label>' +
+    '<label>Password<input type="password" id="password" data-bind="login.password" value="' + esc(S.login.password) + '" autocomplete="current-password"></label>' +
+    '<button class="btn wide" data-act="signin"' + (S.login.busy ? ' disabled' : '') + '>' +
+    (S.login.busy ? 'Signing in…' : 'Sign in') + '</button></div></div>';
+}
+
+/* ================= shared ================= */
+function statusBadge(st, text) {
+  var cls = { Imported: 's-idle', Approved: 's-appr', Paid: 's-paid', Scheduled: 's-sched',
+    Attended: 's-att', Completed: 's-done', Delivered: 's-del', 'No show': 's-bad',
+    'Self-renewed': 's-self', Pending: 's-sched', Rejected: 's-bad', Cancelled: 's-idle' }[st] || 's-idle';
+  return '<span class="status ' + cls + '">' + esc(text || st) + '</span>';
+}
+function emptyState(title, body, label, target) {
+  return '<div class="panel"><div class="empty"><strong>' + esc(title) + '</strong><p>' + esc(body) + '</p>' +
+    (label ? '<button class="btn" data-act="go" data-id="' + target + '">' + esc(label) + '</button>' : '') + '</div></div>';
+}
+function meter(n, k, cls) { return '<div class="meter ' + (cls || '') + '"><span class="n">' + n + '</span><span class="k">' + k + '</span></div>'; }
+function optsOf(o) { return Object.keys(o).sort().map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + ' (' + o[k] + ')</option>'; }).join(''); }
+function sel(bind, label, options, val) {
+  return '<select data-bind="' + bind + '"><option value="all">' + label + '</option>' +
+    options.replace('value="' + esc(val) + '"', 'value="' + esc(val) + '" selected') + '</select>';
+}
+
+/* ================= office ================= */
+function viewOffice() {
+  var apps = S.data.applications;
+  if (!apps.length) return emptyState('Nothing loaded yet', 'No applications have reached this device.', null, null);
+  var d = S.office.date || S.today, q = S.office.q.trim().toLowerCase();
+  var booked = apps.filter(function (a) { return a.appointment_date === d; });
+  var list = booked, walkin = false;
+  if (q) {
+    walkin = true;
+    list = apps.filter(function (a) {
+      return (a.reg_no + ' ' + a.name + ' ' + a.surname + ' ' + (a.national_id || '')).toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 40);
+  }
+  var arrived = booked.filter(function (a) { return ['Attended', 'Completed', 'Delivered'].indexOf(localStatus(a)) !== -1; }).length;
+  var done = booked.filter(function (a) { return ['Completed', 'Delivered'].indexOf(localStatus(a)) !== -1; }).length;
+
+  return '<div class="officebar">' +
+      '<label class="of-date">Appointment day<input type="date" data-bind="office.date" value="' + esc(d) + '"></label>' +
+      '<div class="of-meters"><div><span class="n">' + booked.length + '</span><span class="k">Booked</span></div>' +
+      '<div><span class="n">' + arrived + '</span><span class="k">Arrived</span></div>' +
+      '<div><span class="n">' + done + '</span><span class="k">Completed</span></div></div>' +
+      '<input type="search" data-bind="office.q" placeholder="Search anyone by REG NO or name" value="' + esc(S.office.q) + '"></div>' +
+    (walkin ? '<div class="banner">Searching everyone. Anyone whose appointment is not ' + dmy(d) + ' is recorded as a walk-in.</div>' : '') +
+    (S.office.viewing ? photoViewer() : '') +
+    (!list.length ? '<div class="panel"><div class="empty"><strong>' +
+        (walkin ? 'Nobody matches that search.' : 'No appointments on ' + dmy(d) + '.') + '</strong><p>' +
+        (walkin ? 'Try the REG NO.' : 'Use the search box for someone who came without an appointment.') + '</p></div></div>'
+      : '<div class="cards">' + list.map(officeCard).join('') + '</div>');
+}
+function officeCard(a) {
+  var d = S.office.date || S.today, st = localStatus(a), block = blockTick(a);
+  var walk = a.appointment_date !== d, editing = S.office.editing === a.id, allow = can('tick') && !block;
+  return '<div class="card' + (block ? ' locked' : '') + (editing ? ' editing' : '') + '">' +
+    '<div class="card-h"><div><div class="who">' + esc(a.name + ' ' + a.surname) + '</div>' +
+    '<div class="sub mono">' + esc(a.reg_no) + ' · ' + esc(a.license_type || '') + ' · ' + esc(a.application_type) + '</div></div>' +
+    statusBadge(st) + '</div>' +
+    '<div class="card-m">' + esc(a.department || '') + ' · ' + esc(a.location || '') + '</div>' +
+    (block ? '<div class="banner bad">' + esc(block) + '</div>'
+      : (walk ? '<div class="banner warn">No appointment for ' + dmy(d) +
+          (a.appointment_date ? ' — booked for ' + dmy(a.appointment_date) : '') +
+          '. Payment is recorded, so you can serve this person.</div>' : '')) +
+    (editing
+      ? '<div class="finish"><label>Class<input type="text" id="fClass" value="' + esc(a.dl_class || '') + '" placeholder="e.g. C"></label>' +
+        '<label>DL NO<input type="text" id="fDl" value="' + esc(a.dl_no || '') + '" placeholder="DL0000000"></label>' +
+        '<button class="btn small" data-act="finish" data-v="' + a.id + '">Save completed</button>' +
+        '<button class="btn small ghost" data-act="canceledit">Cancel</button></div>'
+      : '<div class="card-a">' +
+        '<button class="btn small ghost" data-act="attend" data-v="' + a.id + '"' + (allow ? '' : ' disabled') + '>Arrived</button>' +
+        '<button class="btn small" data-act="complete" data-v="' + a.id + '"' + (allow ? '' : ' disabled') + '>Completed</button>' +
+        '<button class="btn small ghost" data-act="noshow" data-v="' + a.id + '"' + (allow ? '' : ' disabled') + '>No show</button></div>') +
+    (block ? '' : '<div class="photos">' + ['front', 'back'].map(function (side) {
+      var src = photoOf(a, side);
+      return src
+        ? '<div class="slot filled"><img src="' + esc(src) + '" alt="licence ' + side + '" data-act="viewphoto" data-v="' + a.id + '|' + side + '">' +
+          '<span class="slabel">' + (side === 'front' ? 'Front' : 'Back') + '</span></div>'
+        : '<label class="slot"><input type="file" accept="image/*" capture="environment" data-photo="' + side + '" data-app="' + a.id + '" hidden>' +
+          '<span class="cam">▣</span><span class="slabel">Photograph ' + side + '</span></label>';
+    }).join('') + '</div>');
+}
+function photoViewer() {
+  var p = String(S.office.viewing).split('|'), a = findApp(p[0]);
+  if (!a) return '';
+  var src = photoOf(a, p[1]); if (!src) return '';
+  return '<div class="viewer" data-act="closeview"><div class="vhead"><span>' +
+    esc(a.name + ' ' + a.surname) + ' · ' + (p[1] === 'front' ? 'Front' : 'Back') + '</span>' +
+    '<span class="vbtns">' +
+      (can('export') ? '<a class="btn small ghost" href="' + esc(src) + '" download="' +
+        esc(photoFileName(a, p[1])) + '">Download</a>' : '') +
+      '<button class="btn small ghost" data-act="closeview">Close</button>' +
+    '</span></div>' +
+    '<img src="' + esc(src) + '" alt="licence"></div>';
+}
+
+/* ================= applications ================= */
+function viewApplications() {
+  var apps = S.data.applications;
+  if (!apps.length) return emptyState('No applications yet', 'Import a workbook to get started.',
+    can('import') ? 'Go to import' : null, 'import');
+  var f = S.list;
+  var rows = apps.filter(function (a) {
+    if (f.batch !== 'all' && String(a.batch_id) !== f.batch) return false;
+    if (f.status !== 'all' && a.status !== f.status) return false;
+    if (f.company !== 'all' && a.company !== f.company) return false;
+    if (f.location !== 'all' && a.location !== f.location) return false;
+    if (f.app !== 'all' && a.application_type !== f.app) return false;
+    if (f.paid === 'paid' && !a.payment_paid) return false;
+    if (f.paid === 'unpaid' && a.payment_paid) return false;
+    if (f.q && (a.reg_no + ' ' + a.name + ' ' + a.surname + ' ' + (a.dl_no || '') + ' ' +
+        (a.national_id || '') + ' ' + (a.department || '')).toLowerCase().indexOf(f.q.toLowerCase()) === -1) return false;
+    return true;
+  });
+  var batchOpts = S.data.batches.map(function (b) { return '<option value="' + b.id + '">' + esc(b.name) + '</option>'; }).join('');
+  var statusOpts = ['Imported', 'Approved', 'Paid', 'Scheduled', 'Attended', 'Completed', 'Delivered', 'Self-renewed', 'No show']
+    .map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+
+  return '<div class="toolbar">' +
+    '<input type="search" data-bind="list.q" placeholder="REG NO, name, DL NO…" value="' + esc(f.q) + '">' +
+    sel('list.batch', 'All batches', batchOpts, f.batch) +
+    sel('list.status', 'Status', statusOpts, f.status) +
+    sel('list.company', 'Company', optsOf(countBy(apps, function (a) { return a.company; })), f.company) +
+    sel('list.location', 'Location', optsOf(countBy(apps, function (a) { return a.location; })), f.location) +
+    sel('list.app', 'New / renewal', optsOf(countBy(apps, function (a) { return a.application_type; })), f.app) +
+    '<select data-bind="list.paid"><option value="all">Payment</option>' +
+      '<option value="paid"' + (f.paid === 'paid' ? ' selected' : '') + '>Paid</option>' +
+      '<option value="unpaid"' + (f.paid === 'unpaid' ? ' selected' : '') + '>Not paid</option></select>' +
+    '<div class="grow"><span class="count">' + rows.length + ' of ' + apps.length + '</span>' +
+      (can('export') ? '<button class="btn" data-act="excel">Download Excel</button>' : '') +
+      '<button class="btn ghost" data-act="listclear">Clear filters</button></div></div>' +
+    '<div class="tablewrap"><table><thead><tr><th></th><th>REG NO</th><th>Name</th><th>Department</th>' +
+    '<th>Category</th><th>New / renewal</th><th>Status</th><th>Payment</th><th>Bill no</th><th>Appointment</th>' +
+    '<th>Delivered</th><th>Self-renewed</th><th>DL NO</th><th>Class</th><th>Photos</th><th class="num">Total</th>' +
+    '</tr></thead><tbody>' +
+    (rows.length ? rows.map(function (a) {
+      var st = a.status;
+      var cls = ['Delivered', 'Completed', 'Self-renewed'].indexOf(st) !== -1 ? 'clean'
+        : st === 'No show' ? 'blocking' : a.payment_paid ? 'info' : 'warning';
+      return '<tr class="' + cls + '"><td class="gutter"><div></div></td>' +
+        '<td class="id">' + esc(a.reg_no) + '</td><td>' + esc(a.name + ' ' + a.surname) + '</td>' +
+        '<td>' + esc(a.department || '') + '</td><td>' + esc(a.license_type || '') + '</td>' +
+        '<td><span class="badge' + (a.application_type === 'New' ? ' new' : '') + '">' + a.application_type + '</span></td>' +
+        '<td>' + statusBadge(st) + '</td>' +
+        '<td>' + (a.payment_paid ? '<span class="yes">Paid</span>' : '<span class="no">Not paid</span>') + '</td>' +
+        '<td class="id">' + (a.bill_number ? esc(a.bill_number) : dash()) + '</td>' +
+        '<td class="id">' + (a.appointment_date ? dmy(a.appointment_date) : dash()) + '</td>' +
+        '<td class="id">' + (a.delivered_on ? dmy(a.delivered_on) : dash()) + '</td>' +
+        '<td class="id">' + (a.self_renewed_on ? dmy(a.self_renewed_on) : dash()) + '</td>' +
+        '<td class="id">' + (a.dl_no ? esc(a.dl_no) : dash()) + '</td>' +
+        '<td class="id">' + (a.dl_class ? esc(a.dl_class) : dash()) + '</td>' +
+        '<td class="id">' + (a.photo_count ? a.photo_count + '/2' : dash()) + '</td>' +
+        '<td class="num"><strong>' + num(a.total) + '</strong></td></tr>';
+    }).join('') : '<tr><td colspan="16"><div class="empty">Nothing matches these filters.</div></td></tr>') +
+    '</tbody></table></div>';
+}
+
+/* ================= bulk ================= */
+function eligibility(a, mode) {
+  if (mode === 'photos') {
+    var got = (a._photos ? Object.keys(a._photos).length : 0) || a.photo_count || 0;
+    return got ? { ok: true, tag: got + ' of 2 on file' } : { ok: false, reason: 'No photograph on file' };
+  }
+  if (a.status === 'Cancelled') return { ok: false, reason: 'Cancelled' };
+  if (a.self_renewed_on) return { ok: false, reason: 'Renewed their own licence on ' + dmy(a.self_renewed_on) };
+  if (mode === 'payment') {
+    if (a.payment_paid) return { ok: false, reason: 'Paid on ' + dmy(a.payment_date) };
+    return { ok: true };
+  }
+  if (mode === 'appointment') {
+    if (a.delivered_on) return { ok: false, reason: 'Already delivered' };
+    if (a.approval_status !== 'Approved') return { ok: false, reason: 'Batch not approved yet' };
+    if (!a.payment_paid) return { ok: false, reason: 'Payment not recorded' };
+    if (a.appointment_date) return { ok: true, tag: 'Booked for ' + dmy(a.appointment_date) };
+    return { ok: true };
+  }
+  if (a.delivered_on) return { ok: false, reason: 'Already delivered' };
+  if (a.status !== 'Completed') return { ok: false, reason: 'Not completed at the licence office' };
+  return { ok: true };
+}
+function canSelfRenew(a) { return !a.self_renewed_on && !a.delivered_on && a.status !== 'Cancelled'; }
+function bulkRows() {
+  var f = S.bulk;
+  return S.data.applications.filter(function (a) {
+    if (f.batch !== 'all' && String(a.batch_id) !== f.batch) return false;
+    if (f.location !== 'all' && a.location !== f.location) return false;
+    if (f.dept !== 'all' && a.department !== f.dept) return false;
+    if (f.q && (a.reg_no + ' ' + a.name + ' ' + a.surname).toLowerCase().indexOf(f.q.toLowerCase()) === -1) return false;
+    return true;
+  });
+}
+function selectedApps() {
+  return S.data.applications.filter(function (a) { return S.bulk.selected[a.id] && eligibility(a, S.bulk.mode).ok; });
+}
+function viewBulk() {
+  if (!S.data.applications.length) return emptyState('Nothing to work on', 'Import a workbook first.',
+    can('import') ? 'Go to import' : null, 'import');
+  var f = S.bulk, m = f.mode;
+  var allowed = can({ payment: 'pay', appointment: 'schedule', delivery: 'deliver', photos: 'export' }[m]);
+  var copy = { payment: ['Payment date', 'Record payment for'], appointment: ['Appointment date', 'Book'],
+               delivery: ['Delivery date', 'Mark delivered'], photos: ['', 'Download photos for'] }[m];
+  var rows = bulkRows();
+  var eligible = rows.filter(function (a) { return eligibility(a, m).ok; });
+  var picked = selectedApps();
+  var allOn = eligible.length && eligible.every(function (a) { return f.selected[a.id]; });
+  var batchOpts = S.data.batches.map(function (b) { return '<option value="' + b.id + '">' + esc(b.name) + '</option>'; }).join('');
+  var pr = f.pasteReport, cols = m === 'appointment' ? 10 : m === 'photos' ? 8 : 9;
+
+  return '<div class="modes">' + ['payment', 'appointment', 'delivery', 'photos'].map(function (k) {
+      return '<button class="mode' + (m === k ? ' on' : '') + '" data-act="mode" data-v="' + k + '">' +
+        { payment: 'Payment', appointment: 'Appointments', delivery: 'Delivery', photos: 'Photographs' }[k] + '</button>';
+    }).join('') + '</div>' +
+    '<div class="toolbar" style="margin-top:16px">' +
+      sel('bulk.batch', 'All batches', batchOpts, f.batch) +
+      '<input type="search" data-bind="bulk.q" placeholder="REG NO, name…" value="' + esc(f.q) + '">' +
+      sel('bulk.location', 'Location', optsOf(countBy(rows, function (a) { return a.location; })), f.location) +
+      sel('bulk.dept', 'Department', optsOf(countBy(rows, function (a) { return a.department; })), f.dept) +
+      '<button class="chip" data-act="selall">' + (allOn ? 'Unselect' : 'Select') + ' all available<span class="c">' + eligible.length + '</span></button>' +
+      '<button class="chip" data-act="togglepaste">' + (f.showPaste ? 'Hide paste box' : 'Paste REG NOs') + '</button>' +
+      '<div class="grow"><span class="count">' + rows.length + ' shown · ' + eligible.length + ' available</span></div></div>' +
+    (f.showPaste ? '<div class="panel pastebox"><div class="pad">' +
+      '<p class="sub" style="margin-top:0">Paste REG NOs to tick them below. Newlines, commas or spaces all work.</p>' +
+      '<textarea data-bind="bulk.paste" placeholder="408004&#10;410885">' + esc(f.paste) + '</textarea>' +
+      '<div class="rowbtns"><button class="btn small" data-act="pastesel">Tick ' + splitList(f.paste).length + ' entries</button>' +
+      '<button class="btn small ghost" data-act="pasteclear">Clear</button></div>' +
+      (pr ? '<div class="banner' + (pr.missing.length || pr.blocked.length ? ' warn' : '') + '">Ticked ' + pr.picked + '.' +
+        (pr.blocked.length ? ' Not available: ' + esc(pr.blocked.join(', ')) + '.' : '') +
+        (pr.missing.length ? ' Not in this list: ' + esc(pr.missing.join(', ')) + '.' : '') + '</div>' : '') +
+      '</div></div>' : '') +
+    '<div class="tablewrap"><table><thead><tr><th class="tick"></th><th>REG NO</th><th>Name</th><th>Department</th>' +
+      '<th>Category</th><th>Status</th>' +
+      (m === 'photos' ? '<th>Photos</th>' : '<th>Payment</th><th>Appointment</th>') +
+      '<th>Available</th>' + (m === 'appointment' ? '<th>Renewed alone</th>' : '') + '</tr></thead><tbody>' +
+      (rows.length ? rows.map(function (a) {
+        var span = m === 'appointment' ? 10 : m === 'photos' ? 8 : 9;
+        var e = eligibility(a, m), on = !!f.selected[a.id] && e.ok;
+        var html = '<tr class="' + (e.ok ? (on ? 'clean sel' : 'info') : 'blocking') + '">' +
+          '<td class="tick">' + (e.ok ? '<input type="checkbox" data-act="tickrow" data-v="' + a.id + '"' + (on ? ' checked' : '') + '>' : '<span class="lock">·</span>') + '</td>' +
+          '<td class="id">' + esc(a.reg_no) + '</td><td>' + esc(a.name + ' ' + a.surname) + '</td>' +
+          '<td>' + esc(a.department || '') + '</td><td>' + esc(a.license_type || '') + '</td>' +
+          '<td>' + statusBadge(a.status) + '</td>' +
+          (m === 'photos'
+            ? '<td class="id">' + ((a.photo_count || 0) + '/2') + '</td>'
+            : '<td>' + (a.payment_paid ? '<span class="yes">Paid</span>' : '<span class="no">Not paid</span>') + '</td>' +
+              '<td class="id">' + (a.appointment_date ? dmy(a.appointment_date) : dash()) + '</td>') +
+          '<td>' + (e.ok ? '<span class="yes">Yes</span>' + (e.tag ? '<div class="sub">' + esc(e.tag) + '</div>' : '')
+            : '<span class="no">No</span><div class="sub">' + esc(e.reason) + '</div>') + '</td>' +
+          (m === 'appointment' ? '<td>' + (canSelfRenew(a) && can('schedule')
+              ? '<button class="linkbtn" data-act="selfrenew" data-v="' + a.id + '">Renewed on their own</button>'
+              : (a.self_renewed_on ? '<span class="sub">' + dmy(a.self_renewed_on) +
+                  (can('schedule') ? ' · <button class="linkbtn" data-act="undorenew" data-v="' + a.id + '">undo</button>' : '') + '</span>' : '')) + '</td>' : '') +
+          '</tr>';
+        if (S.bulk.renewing === a.id) {
+          html += '<tr class="detail"><td></td><td colspan="' + (span - 1) + '"><div class="renewform">' +
+            '<div class="eyebrow">Renewed their own licence — no company payment, no appointment</div>' +
+            '<div class="fields">' +
+              '<label>Date<input type="date" id="srDate" value="' + esc(S.today) + '"></label>' +
+              '<label>New DL NO<input type="text" id="srDl" value="' + esc(a.dl_no || '') + '" placeholder="DL0000000"></label>' +
+              '<label>Class<input type="text" id="srClass" value="' + esc(a.dl_class || '') + '" placeholder="C"></label>' +
+              '<label>New expiry<input type="date" id="srExp" value="' + esc(a.dl_expire_date || '') + '"></label>' +
+              '<label>Note<input type="text" id="srNote" placeholder="optional"></label></div>' +
+            '<div class="rowbtns"><button class="btn small" data-act="selfrenewsave" data-v="' + a.id + '">Save</button>' +
+            '<button class="btn small ghost" data-act="selfrenewcancel">Cancel</button></div></div></td></tr>';
+        }
+        return html;
+      }).join('') : '<tr><td colspan="' + cols + '"><div class="empty">Nobody matches these filters.</div></td></tr>') +
+    '</tbody></table></div>' +
+    '<div class="applybar"><div class="selinfo"><span class="n">' + picked.length + '</span><span class="k">selected</span></div>' +
+      (m === 'photos' ? '' :
+        '<label>' + copy[0] + '<input type="date" data-bind="bulk.date" value="' + esc(f.date || S.today) + '"></label>') +
+      (m === 'payment' ? '<label>Bill number<input type="text" data-bind="bulk.bill" value="' + esc(f.bill) + '" placeholder="e.g. 4471"></label>' : '') +
+      '<div class="grow">' + (picked.length ? '<button class="btn ghost" data-act="selnone">Clear selection</button>' : '') +
+        '<button class="btn" data-act="applysel"' + (!allowed || !picked.length || !S.net.online ? ' disabled' : '') + '>' +
+        copy[1] + ' ' + picked.length + ' ' + (picked.length === 1 ? 'person' : 'people') + '</button></div>' +
+      (!S.net.online ? '<div class="banner warn" style="flex-basis:100%;margin:0">These actions need a connection to the office server.</div>'
+        : (!allowed ? '<div class="banner warn" style="flex-basis:100%;margin:0">Your role cannot do this.</div>' : '')) +
+    '</div>';
+}
+
+/* ================= batches ================= */
+function viewBatches() {
+  if (!S.data.batches.length) return emptyState('No batch yet', 'Import a monthly workbook and it appears here for approval.',
+    can('import') ? 'Go to import' : null, 'import');
+  return '<div class="panel"><h3>Batches</h3><div class="tablewrap" style="border:0;max-height:none">' +
+    '<table><thead><tr><th></th><th>Batch</th><th class="num">People</th><th class="num">Total cost</th>' +
+    '<th>Approval</th><th>Action</th></tr></thead><tbody>' +
+    S.data.batches.map(function (b) {
+      var apps = S.data.applications.filter(function (a) { return a.batch_id === b.id; });
+      var total = apps.reduce(function (n, a) { return n + Number(a.total || 0); }, 0);
+      var st = b.approval_status;
+      var cls = st === 'Approved' ? 'clean' : st === 'Rejected' ? 'blocking' : 'warning';
+      return '<tr class="' + cls + '"><td class="gutter"><div></div></td>' +
+        '<td><strong>' + esc(b.name) + '</strong><div class="sub">' + esc(b.source_file || '') + '</div></td>' +
+        '<td class="num">' + apps.length + '</td><td class="num">' + P.money(total) + '</td>' +
+        '<td>' + statusBadge(st) + (b.gm_signed_on ? '<div class="sub">GM signed ' + dmy(b.gm_signed_on) + '</div>' : '') + '</td>' +
+        '<td>' + (can('approve')
+          ? '<div class="apprcell"><input type="date" id="appr_' + b.id + '" value="' + esc(b.gm_signed_on || S.today) + '">' +
+            '<button class="btn small" data-act="approve" data-v="' + b.id + '"' + (S.net.online ? '' : ' disabled') + '>' +
+            (st === 'Approved' ? 'Update' : 'Approve') + '</button>' +
+            (st === 'Approved' ? '' : '<button class="btn small ghost" data-act="reject" data-v="' + b.id + '"' + (S.net.online ? '' : ' disabled') + '>Reject</button>') + '</div>'
+          : '<span class="sub">Read only</span>') + '</td></tr>';
+    }).join('') + '</tbody></table></div></div>' +
+    '<div class="actions"><div class="note">Nothing can be booked until its batch is approved. Set the date the General Manager signed off, then approve.</div>' +
+    (can('export') ? '<button class="btn" data-act="excel">Download Excel</button>' : '') + '</div>';
+}
+
+/* ================= dashboard ================= */
+function viewDashboard() {
+  var apps = S.data.applications;
+  if (!apps.length) return emptyState('Nothing to show yet', 'Import a workbook and the numbers appear here.',
+    can('import') ? 'Go to import' : null, 'import');
+  var total = apps.length;
+  var has = function (fn) { return apps.filter(fn).length; };
+  var paid = apps.filter(function (a) { return a.payment_paid; });
+  var selfr = has(function (a) { return a.self_renewed_on; });
+  var collected = paid.reduce(function (n, a) { return n + Number(a.total || 0); }, 0);
+  var outstanding = apps.filter(function (a) { return !a.payment_paid && !a.self_renewed_on; })
+                        .reduce(function (n, a) { return n + Number(a.total || 0); }, 0);
+  var stages = [
+    ['Imported', total, 'in the system'],
+    ['Approved', has(function (a) { return a.approval_status === 'Approved'; }), 'batch signed off'],
+    ['Paid', paid.length, 'payment recorded'],
+    ['Booked', has(function (a) { return a.appointment_date; }), 'has an appointment'],
+    ['Arrived', has(function (a) { return ['Attended', 'Completed', 'Delivered'].indexOf(a.status) !== -1; }), 'seen at the office'],
+    ['Completed', has(function (a) { return ['Completed', 'Delivered'].indexOf(a.status) !== -1; }), 'licence issued'],
+    ['Delivered', has(function (a) { return a.delivered_on; }), 'handed over']
+  ];
+  var byCo = countBy(apps, function (a) { return a.company; });
+  var byLoc = countBy(apps, function (a) { return a.location; });
+  var expired = has(function (a) { return a.dl_expire_date && a.dl_expire_date < S.today; });
+  var unpaidCount = total - paid.length - selfr;
+
+  return '<div class="meters">' +
+      meter(total, 'People in system', '') +
+      meter(unpaidCount, 'Not yet paid', unpaidCount ? 'warn' : 'good') +
+      meter(has(function (a) { return a.appointment_date === S.today; }), 'Booked today', '') +
+      meter(has(function (a) { return a.status === 'Completed'; }), 'Waiting for delivery', '') +
+      meter(selfr, 'Renewed on their own', '') +
+      meter(expired, 'Expired licences', expired ? 'bad' : '') + '</div>' +
+    '<div class="split"><div class="panel"><h3>How far each stage has got</h3><div class="pad">' +
+      stages.map(function (st, i) {
+        var behind = (i ? stages[i - 1][1] : st[1]) - st[1];
+        return '<div class="barrow"><span class="bl">' + st[0] + '<em>' + st[2] + '</em></span>' +
+          '<span class="bt"><i style="width:' + Math.round((st[1] / total) * 100) + '%"></i></span>' +
+          '<span class="bn mono">' + st[1] + '</span><span class="bw">' + (behind > 0 ? behind + ' behind' : '') + '</span></div>';
+      }).join('') +
+      (selfr ? '<div class="banner" style="margin-top:12px">' + selfr + ' renewed their own licence and left the pipeline.</div>' : '') +
+      '<div class="sub" style="margin-top:12px">Each bar counts everyone who has reached that stage, so people stay counted as they move along.</div>' +
+    '</div></div>' +
+    '<div class="panel"><h3>Money and coverage</h3><div class="pad">' +
+      '<div class="bd"><span>Collected · ' + paid.length + ' people</span><span>' + P.money(collected) + '</span></div>' +
+      '<div class="bd"><span>Not yet paid · ' + unpaidCount + ' people</span><span>' + P.money(outstanding) + '</span></div>' +
+      '<div class="bd sum"><span>Programme cost</span><span>' + P.money(collected + outstanding) + '</span></div>' +
+      '<div style="margin-top:16px" class="eyebrow">By company</div>' +
+      Object.keys(byCo).map(function (k) { return '<div class="bd"><span>' + esc(k) + '</span><span>' + byCo[k] + '</span></div>'; }).join('') +
+      '<div style="margin-top:14px" class="eyebrow">By location</div>' +
+      Object.keys(byLoc).sort(function (a, b) { return byLoc[b] - byLoc[a]; }).map(function (k) {
+        return '<div class="bd"><span>' + esc(k) + '</span><span>' + byLoc[k] + '</span></div>'; }).join('') +
+      (can('export') ? '<div style="margin-top:16px"><button class="btn wide" data-act="excel">Download Excel report</button></div>' : '') +
+    '</div></div></div>';
+}
+
+/* ================= import ================= */
+var LABELS = {
+  DUPLICATE_REG_NO_IN_FILE: 'Same REG NO used twice in this file',
+  DUPLICATE_DL_NO_IN_FILE: 'Two people share one DL number',
+  DUPLICATE_NATIONAL_ID_IN_FILE: 'Two people share one national ID',
+  MISSING_REG_NO: 'REG NO is empty', MISSING_NAME: 'Name is empty', MISSING_SURNAME: 'Surname is empty',
+  MISSING_COMPANY: 'Company is empty', BAD_EXPIRE_DATE: 'Expiry date cannot be read',
+  BAD_DOB: 'Date of birth cannot be read', MISSING_EXPIRE_DATE: 'Renewal with no expiry date',
+  ALREADY_EXPIRED: 'Licence already expired', AMOUNT_MISMATCH: 'Licence fee does not match the category',
+  PROCESS_FEE_MISMATCH: 'Process fee does not match new or renewal', UNKNOWN_LICENSE_TYPE: 'Unknown licence category',
+  MISSING_LICENSE_TYPE: 'Category is empty', MISSING_EYE_TEST_FEE: 'No eye test fee recorded',
+  MISSING_NATIONAL_ID: 'No national ID or passport number', MISSING_PHONE: 'No phone number',
+  PHONE_FORMAT: 'Phone number in an unusual format', DL_NO_FORMAT: 'DL number in an unusual format'
+};
+function issueList(s) {
+  var items = Object.keys(s.issueCounts).map(function (k) { return s.issueCounts[k]; });
+  var order = { blocking: 0, warning: 1, info: 2 };
+  items.sort(function (a, b) { return order[a.severity] - order[b.severity] || b.count - a.count; });
+  if (!items.length) return '<div class="empty">Nothing flagged.</div>';
+  return items.map(function (i) {
+    return '<button class="issue ' + i.severity + (S.imp.issue === i.code ? ' on' : '') + '" data-act="issue" data-v="' + i.code + '">' +
+      '<span class="dot"></span><span class="txt">' + esc(LABELS[i.code] || i.code) +
+      '<small>#' + i.rows.slice(0, 8).join(', #') + (i.rows.length > 8 ? ' and ' + (i.rows.length - 8) + ' more' : '') + '</small></span>' +
+      '<span class="cnt">' + i.count + '</span></button>';
+  }).join('');
+}
+function viewImport() {
+  if (!S.parsed) {
+    return '<div class="drop" id="drop"><h2>Drop the monthly workbook here</h2>' +
+      '<p>One company per file, first sheet is read. Nothing is saved until you import.</p>' +
+      '<button class="btn" data-act="pickfile">Choose a file</button>' +
+      '<input type="file" id="file" accept=".xlsx,.xlsm,.xls" hidden></div>';
+  }
+  var res = S.parsed, s = res.summary, blocked = s.blocking > 0, f = S.imp;
+  var rows = res.rows.filter(function (r) {
+    if (f.severity !== 'all' && r.severity !== f.severity) return false;
+    if (f.issue && !r.issues.some(function (i) { return i.code === f.issue; })) return false;
+    if (f.q && (r.regNo + ' ' + r.name + ' ' + r.surname).toLowerCase().indexOf(f.q.toLowerCase()) === -1) return false;
+    return true;
+  });
+  return '<div class="grid-head">' +
+    '<div class="tag ' + (blocked ? 'blocked' : 'ready') + '"><div class="band"></div><div class="body">' +
+      '<div class="punch"></div><div class="eyebrow">Batch</div>' +
+      '<input class="batch" id="batchName" value="' + esc(res.suggestedBatch || res.sheetName) + '">' +
+      '<div class="meta mono">' + esc(Object.keys(s.byCompany).join(' · ') || '—') + ' · ' + s.total + ' people</div>' +
+      '<div class="total"><small>Total cost (USD)</small>' + P.money(s.money.total) + '</div>' +
+      '<div class="verdict">' + (blocked ? 'Fix before importing' : 'Ready to import') + '<em>' +
+      (blocked ? s.blocking + ' row(s) cannot be imported.' : 'Warnings are recorded, not stopped.') + '</em></div>' +
+    '</div></div>' +
+    '<div><div class="meters">' + meter(s.total, 'Rows read', '') + meter(s.clean, 'Clean', 'good') +
+      meter(s.warning, 'Warnings', 'warn') + meter(s.blocking, 'Blocked', s.blocking ? 'bad' : '') +
+      meter(s.byApplicationType['New'] || 0, 'New licences', '') +
+      meter(s.expiry.expired, 'Already expired', s.expiry.expired ? 'warn' : '') + '</div>' +
+      '<div class="panel" style="margin-top:20px"><h3>What needs attention</h3>' + issueList(s) + '</div></div></div>' +
+    '<div class="toolbar">' + ['all', 'blocking', 'warning', 'info', 'clean'].map(function (k) {
+        var label = { all: 'All', blocking: 'Blocked', warning: 'Warnings', info: 'Notes', clean: 'Clean' }[k];
+        var n = { all: s.total, blocking: s.blocking, warning: s.warning, info: s.info, clean: s.clean }[k];
+        return '<button class="chip ' + (k === 'blocking' ? 'bad' : k === 'warning' ? 'warn' : '') +
+          (f.severity === k && !f.issue ? ' on' : '') + '" data-act="sev" data-v="' + k + '">' + label +
+          '<span class="c">' + n + '</span></button>';
+      }).join('') +
+      '<input type="search" data-bind="imp.q" placeholder="REG NO, name…" value="' + esc(f.q) + '">' +
+      '<div class="grow"><span class="count">' + rows.length + ' of ' + res.rows.length + '</span>' +
+      '<button class="btn ghost" data-act="impclear">Clear filters</button></div></div>' +
+    '<div class="tablewrap"><table><thead><tr><th></th><th>#</th><th>REG NO</th><th>Name</th><th>Surname</th>' +
+      '<th>Company</th><th>Category</th><th>New / renewal</th><th>DL NO</th><th>Expires</th><th>Location</th>' +
+      '<th class="num">Total</th><th>Flags</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr class="' + r.severity + '"><td class="gutter"><div></div></td>' +
+          '<td class="rowno">' + r.index + '</td><td class="id">' + esc(r.regNo) + '</td>' +
+          '<td>' + esc(r.name) + '</td><td>' + esc(r.surname) + '</td><td>' + esc(r.company) + '</td>' +
+          '<td>' + esc(r.licenseType) + '</td>' +
+          '<td><span class="badge' + (r.applicationType === 'New' ? ' new' : '') + '">' + r.applicationType + '</span></td>' +
+          '<td class="id">' + (r.dlNo ? esc(r.dlNo) : dash()) + '</td>' +
+          '<td class="id">' + (r.dlExpireDate ? P.formatDate(r.dlExpireDate) : dash()) + '</td>' +
+          '<td>' + esc(r.location) + '</td><td class="num">' + num(r.total) + '</td>' +
+          '<td class="flagcell">' + (r.issues.length || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+    '<div class="actions"><button class="btn" data-act="commit"' + (blocked || !S.net.online ? ' disabled' : '') + '>Import ' +
+      (res.rows.length - s.blocking) + ' people</button>' +
+      '<button class="btn ghost" data-act="resetimport">Load another file</button>' +
+      '<div class="note">' + (blocked ? 'Blocked rows are left out. Fix them in the workbook and load it again.'
+        : 'Anyone who already has an open application is reported and skipped.') + '</div></div>';
+}
+
+/* ================= actions ================= */
+var toastTimer = null;
+function toast(msg) {
+  var t = $('#toast'); if (!t) return;
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+}
+function post(path, body, okMsg) {
+  return api(path, { method: 'POST', body: body, timeout: 60000 })
+    .then(function (r) {
+      S.net.error = (r && r.refused && r.refused.length)
+        ? r.refused.length + ' refused — ' + (r.refused[0].reason || '') : '';
+      if (okMsg) toast(okMsg(r));
+      S.bulk.selected = {};
+      return pullFresh(true);
+    })
+    .catch(function (err) {
+      S.net.error = err.offline ? 'No connection to the office server.' : err.message;
+      render();
+    });
+}
+function downloadPhotos(ids) {
+  if (!ids.length) return;
+  toast('Collecting ' + ids.length + ' ' + (ids.length === 1 ? 'person' : 'people') + '…');
+  api('/api/photos/export', { method: 'POST', body: { application_ids: ids }, raw: true, timeout: 300000 })
+    .then(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'DL_Photos_' + S.today.split('-').reverse().join('-') + '.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 8000);
+      S.bulk.selected = {};
+      toast('Downloaded');
+      render();
+    })
+    .catch(function (err) {
+      S.net.error = err.offline ? 'Downloading photographs needs a connection to the office server.' : err.message;
+      render();
+    });
+}
+
+function downloadExcel() {
+  var q = S.list.batch !== 'all' ? '?batch_id=' + S.list.batch : '';
+  toast('Building the workbook…');
+  api('/api/report.xlsx' + q, { raw: true, timeout: 120000 }).then(function (blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'DL_Report_' + S.today.split('-').reverse().join('-') + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    toast('Downloaded');
+  }).catch(function (err) {
+    S.net.error = err.offline ? 'The report needs a connection to the office server.' : err.message;
+    render();
+  });
+}
+function canvasWorks() { try { return !!document.createElement('canvas').getContext('2d'); } catch (e) { return false; } }
+function shrink(dataUrl, done) {
+  if (!canvasWorks()) { done(null); return; }
+  var img = new Image();
+  img.onload = function () {
+    try {
+      var s = Math.min(1, 1280 / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      done(c.toDataURL('image/jpeg', 0.72), c.width, c.height);
+    } catch (e) { done(null); }
+  };
+  img.onerror = function () { done(null); };
+  img.src = dataUrl;
+}
+function readWorkbook(file) {
+  var fr = new FileReader();
+  fr.onload = function () {
+    try {
+      var wb = XLSX.read(new Uint8Array(fr.result), { type: 'array', cellDates: true });
+      var sheet = wb.SheetNames[0];
+      var matrix = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1, raw: true, defval: null, blankrows: false });
+      S.parsed = P.parseMatrix(matrix, { fileName: file.name, sheetName: sheet });
+      S.imp = freshImp();
+      render();
+    } catch (err) { alert('That file could not be read as a workbook.\n\n' + err.message); }
+  };
+  fr.readAsArrayBuffer(file);
+}
+function commitImport() {
+  var res = S.parsed; if (!res) return;
+  var name = ($('#batchName') && $('#batchName').value.trim()) || res.suggestedBatch;
+  var rows = res.rows.filter(function (r) { return r.severity !== 'blocking'; }).map(function (r) {
+    return { index: r.index, regNo: r.regNo, company: r.company, name: r.name, surname: r.surname,
+      department: r.department, jobTitle: r.jobTitle, location: r.location, licenseType: r.licenseType,
+      dlNo: r.dlNo, dlClass: r.dlClass, dlExpireDate: r.dlExpireDate ? iso(r.dlExpireDate) : null,
+      nationalId: r.nationalId, dateOfBirth: r.dateOfBirth ? iso(r.dateOfBirth) : null, phone: r.phone,
+      amount: r.amount, processFee: r.processFee, drivingTestFee: r.drivingTestFee,
+      eyeTestFee: r.eyeTestFee, billNumber: r.billNumber, note: r.note };
+  });
+  api('/api/import', { method: 'POST', timeout: 180000,
+    body: { batch_name: name, source_file: res.fileName, sheet_name: res.sheetName, rows: rows,
+            findings: res.summary.issueCounts } })
+    .then(function (r) {
+      S.parsed = null;
+      toast(r.imported + ' imported' + (r.skipped.length ? ', ' + r.skipped.length + ' skipped' : ''));
+      S.net.error = r.skipped.length
+        ? 'Skipped: ' + r.skipped.slice(0, 5).map(function (x) { return x.reg_no + ' (' + x.reason + ')'; }).join('; ') : '';
+      S.screen = 'batches';
+      return pullFresh(true);
+    })
+    .catch(function (err) {
+      S.net.error = err.offline ? 'Importing needs a connection to the office server.' : err.message;
+      render();
+    });
+}
+function setPath(path, value) {
+  var p = path.split('.'), o = S;
+  for (var i = 0; i < p.length - 1; i++) o = o[p[i]];
+  o[p[p.length - 1]] = value;
+}
+
+/* ================= events ================= */
+document.addEventListener('click', function (e) {
+  var el = e.target.closest ? e.target.closest('[data-act]') : null;
+  if (!el) return;
+  var act = el.getAttribute('data-act'), v = el.getAttribute('data-v');
+
+  if (act === 'signin') return signIn(($('#email') || {}).value || '', ($('#password') || {}).value || '');
+  if (act === 'signout') { if (confirm('Sign out of this device?')) signOut(); return; }
+  if (act === 'sync') { flush(); return; }
+  if (act === 'go') { go(el.getAttribute('data-id')); return; }
+  if (act === 'excel') { downloadExcel(); return; }
+  if (act === 'pickfile') { $('#file').click(); return; }
+  if (act === 'resetimport') { S.parsed = null; render(); return; }
+  if (act === 'commit') { commitImport(); return; }
+  if (act === 'sev') { S.imp.severity = v; S.imp.issue = null; render(); return; }
+  if (act === 'issue') { S.imp.issue = S.imp.issue === v ? null : v; S.imp.severity = 'all'; render(); return; }
+  if (act === 'impclear') { S.imp = freshImp(); render(); return; }
+  if (act === 'listclear') { S.list = { q: '', batch: 'all', status: 'all', company: 'all', location: 'all', app: 'all', paid: 'all' }; render(); return; }
+
+  if (act === 'approve' || act === 'reject') {
+    var on = $('#appr_' + v) ? $('#appr_' + v).value : S.today;
+    return post('/api/batches/' + v + '/approval',
+      { status: act === 'approve' ? 'Approved' : 'Rejected', gm_signed_on: on },
+      function () { return 'Batch ' + (act === 'approve' ? 'approved' : 'rejected'); });
+  }
+  if (act === 'mode') { S.bulk.mode = v; S.bulk.selected = {}; S.bulk.pasteReport = null; S.bulk.renewing = null; render(); return; }
+  if (act === 'tickrow') { if (S.bulk.selected[v]) delete S.bulk.selected[v]; else S.bulk.selected[v] = true; render(); return; }
+  if (act === 'selall') {
+    var elig = bulkRows().filter(function (a) { return eligibility(a, S.bulk.mode).ok; });
+    var allOn = elig.length && elig.every(function (a) { return S.bulk.selected[a.id]; });
+    elig.forEach(function (a) { if (allOn) delete S.bulk.selected[a.id]; else S.bulk.selected[a.id] = true; });
+    render(); return;
+  }
+  if (act === 'selnone') { S.bulk.selected = {}; render(); return; }
+  if (act === 'togglepaste') { S.bulk.showPaste = !S.bulk.showPaste; S.bulk.pasteReport = null; render(); return; }
+  if (act === 'pasteclear') { S.bulk.paste = ''; S.bulk.pasteReport = null; render(); return; }
+  if (act === 'pastesel') {
+    var seen = {}, rep = { picked: 0, blocked: [], missing: [] }, pool = bulkRows();
+    splitList(S.bulk.paste).forEach(function (reg) {
+      var k = reg.toUpperCase();
+      if (seen[k]) return; seen[k] = true;
+      var hit = null;
+      pool.forEach(function (a) { if (a.reg_no.toUpperCase() === k) hit = a; });
+      if (!hit) { rep.missing.push(reg); return; }
+      if (!eligibility(hit, S.bulk.mode).ok) { rep.blocked.push(reg); return; }
+      S.bulk.selected[hit.id] = true; rep.picked++;
+    });
+    S.bulk.pasteReport = rep; render(); return;
+  }
+  if (act === 'applysel') {
+    var ids = selectedApps().map(function (a) { return a.id; });
+    var when = S.bulk.date || S.today;
+    if (S.bulk.mode === 'photos') return downloadPhotos(ids);
+    if (S.bulk.mode === 'payment')
+      return post('/api/payments', { application_ids: ids, bill_number: S.bulk.bill, payment_date: when },
+        function (r) { return r.applied.length + ' payment(s) recorded'; });
+    if (S.bulk.mode === 'appointment')
+      return post('/api/appointments', { application_ids: ids, appointment_date: when },
+        function (r) { return r.applied.length + ' appointment(s) booked'; });
+    return post('/api/deliveries', { application_ids: ids, delivered_on: when },
+      function (r) { return r.applied.length + ' delivery(ies) recorded'; });
+  }
+  if (act === 'selfrenew') { S.bulk.renewing = Number(v); render(); return; }
+  if (act === 'selfrenewcancel') { S.bulk.renewing = null; render(); return; }
+  if (act === 'selfrenewsave') {
+    var body = { application_ids: [Number(v)],
+      self_renewed_on: ($('#srDate') || {}).value || S.today,
+      dl_no: ($('#srDl') || {}).value || '', dl_class: ($('#srClass') || {}).value || '',
+      dl_expire_date: ($('#srExp') || {}).value || null, note: ($('#srNote') || {}).value || '' };
+    S.bulk.renewing = null;
+    return post('/api/self-renewals', body, function () { return 'Marked as renewed on their own'; });
+  }
+  if (act === 'undorenew')
+    return post('/api/self-renewals/undo', { application_ids: [Number(v)] }, function () { return 'Undone'; });
+
+  if (act === 'viewphoto') { S.office.viewing = v; render(); return; }
+  if (act === 'closeview') { S.office.viewing = null; render(); return; }
+  if (act === 'canceledit') { S.office.editing = null; render(); return; }
+  if (act === 'attend' || act === 'noshow' || act === 'complete' || act === 'finish') {
+    var app = findApp(v); if (!app) return;
+    if (act === 'complete') { S.office.editing = app.id; render(); return; }
+    var block = blockTick(app);
+    if (block) { alert(block); return; }
+    if (act === 'attend') return queueEvent(app, 'ATTENDED');
+    if (act === 'noshow') return queueEvent(app, 'NO_SHOW');
+    var extra = { dl_class: ($('#fClass') || {}).value || '', dl_no: ($('#fDl') || {}).value || '' };
+    S.office.editing = null;
+    return queueEvent(app, 'COMPLETED', extra);
+  }
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || S.session) return;
+  if (e.target.id === 'email') {
+    e.preventDefault();
+    S.login.email = e.target.value;
+    var pw = $('#password');
+    if (pw) pw.focus();                  // Enter here means "next field", not "sign in"
+    return;
+  }
+  if (e.target.id === 'password') {
+    e.preventDefault();
+    signIn(($('#email') || {}).value || '', e.target.value || '');
+  }
+});
+
+document.addEventListener('change', function (e) {
+  var t = e.target;
+  if (t.id === 'file') { if (t.files[0]) readWorkbook(t.files[0]); return; }
+  var side = t.getAttribute && t.getAttribute('data-photo');
+  if (side) {
+    var app = findApp(t.getAttribute('data-app'));
+    if (!app || !t.files || !t.files[0]) return;
+    var block = blockTick(app);
+    if (block) { alert(block); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      shrink(fr.result, function (small, w, h) { queuePhoto(app, side, small || fr.result, w, h); });
+    };
+    fr.readAsDataURL(t.files[0]);
+    return;
+  }
+  var bind = t.getAttribute && t.getAttribute('data-bind');
+  if (!bind) return;
+  setPath(bind, t.type === 'checkbox' ? t.checked : t.value);
+  if (bind === 'bulk.batch') S.bulk.selected = {};
+  render();
+});
+
+document.addEventListener('input', function (e) {
+  var t = e.target, bind = t.getAttribute && t.getAttribute('data-bind');
+  if (!bind) return;
+  if (bind === 'login.email' || bind === 'login.password') { setPath(bind, t.value); return; }
+  if (t.type !== 'search' && t.tagName !== 'TEXTAREA') return;
+  setPath(bind, t.value);
+  if (bind === 'bulk.paste') {
+    var b = document.querySelector('[data-act="pastesel"]');
+    if (b) b.textContent = 'Tick ' + splitList(t.value).length + ' entries';
+    return;
+  }
+  var pos = t.selectionStart;
+  render();
+  var again = document.querySelector('[data-bind="' + bind + '"]');
+  if (again) { again.focus(); try { again.setSelectionRange(pos, pos); } catch (x) {} }
+});
+
+['dragover', 'drop'].forEach(function (ev) {
+  document.addEventListener(ev, function (e) {
+    if (S.screen !== 'import' || S.parsed) return;
+    e.preventDefault();
+    var d = $('#drop'); if (d) d.classList.toggle('over', ev === 'dragover');
+    if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) readWorkbook(e.dataTransfer.files[0]);
+  });
+});
+
+S.bulk.date = S.today;
+S.office.date = S.today;
+boot();
+})();
+
+</script>
+</body>
+</html>
