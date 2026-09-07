@@ -1,0 +1,6 @@
+﻿# cPanel / Apache configuration for DL Tracker
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Pass Authorization header to WSGI/FastAPI (critical for Bearer tokens)
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>

@@ -1,0 +1,13 @@
+﻿# DL Tracker settings with Neon.tech PostgreSQL
+DATABASE_URL=postgresql://neondb_owner:npg_hJcWnp0Us3Sk@ep-empty-lake-ayhyaymu-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require
+
+DB_HOST=ep-empty-lake-ayhyaymu-pooler.c-5.us-east-2.aws.neon.tech
+DB_PORT=5432
+DB_NAME=neondb
+DB_USER=neondb_owner
+DB_PASS=npg_hJcWnp0Us3Sk
+DB_SSLMODE=require
+
+HOST=0.0.0.0
+PORT=8000
+ROOT_PATH=/dl

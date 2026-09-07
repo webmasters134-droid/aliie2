@@ -1,0 +1,23 @@
+# DL Tracker settings. Rename this file to dl-config.txt and keep it
+# next to main.py. Replacing main.py with a newer version does not
+# touch this file.
+#
+# Every value here can also be supplied as an environment variable of
+# the same name, which takes priority. Use that if you prefer not to
+# keep the password in a file.
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=dltracker
+DB_USER=dltracker
+DB_PASS=CHANGE-ME
+
+# HOST=0.0.0.0 means "listen on every interface". Set it to 127.0.0.1
+# if a reverse proxy on the same machine is the only thing that should
+# reach the application directly.
+HOST=0.0.0.0
+PORT=8000
+
+# Sub-path deployment (e.g. inciatolyesi.com/dl). Leave empty if serving from root.
+# ROOT_PATH=/dl
+
