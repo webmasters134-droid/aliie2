@@ -976,9 +976,23 @@ def report_xlsx(batch_id: Optional[int] = None, user=Depends(current_user)):
 
 
 # --------------------------------------------------------------- web client
+from fastapi.responses import FileResponse
 
-if WEB_DIR.is_dir():
+ROOT_INDEX = Path(__file__).resolve().parent / "index.html"
+WEB_INDEX = WEB_DIR / "index.html"
+
+if WEB_INDEX.is_file():
     app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+elif ROOT_INDEX.is_file():
+    @app.get("/")
+    def serve_root():
+        return FileResponse(ROOT_INDEX)
+    @app.get("/{full_path:path}")
+    def serve_fallback(full_path: str):
+        target = Path(__file__).resolve().parent / full_path
+        if target.is_file():
+            return FileResponse(target)
+        return FileResponse(ROOT_INDEX)
 
 
 # ---------------------------------------------------------------------------
